@@ -132,6 +132,7 @@ handle_serial_telemetry(char query)    // In:  Query
   uint8_t axis;
   boolean cont = false;
   float   dummy;
+  float   windup_guard;
   
   
   switch (query)
@@ -178,29 +179,31 @@ handle_serial_telemetry(char query)    // In:  Query
  
   case 'G':
     // Receive auto level configuration values
-    // *** NOT IMPLEMENTED YET ***
     
-    dummy = serial_read_float();  // levelLimit
-    dummy = serial_read_float();  // levelOff
+    receiver_rot_gain = serial_read_float() / 1000;  // levelLimit
+    
+    receiver_rot_limit = serial_read_float();  // levelOff
 
     break;
    
   case 'I':
     // Receive flight control configuration values
+
+    // The configurator only supports a single windup guard
   
-    g_windup_guard = serial_read_float();
+    windup_guard = serial_read_float();
     
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
-      rot_rate_pid[rot].set_windup_guard(g_windup_guard);
+      rot_rate_pid[rot].set_windup_guard(windup_guard);
     };
     
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
-      rot_pid[rot].set_windup_guard(g_windup_guard);
+      rot_pid[rot].set_windup_guard(windup_guard);
     };
     
-    dummy = serial_read_float();  // *** NOT IMPLEMENTED *** xmitFactor
+    receiver_rot_rate_gain = serial_read_float();  // xmitFactor
 
     break;
   
@@ -208,6 +211,7 @@ handle_serial_telemetry(char query)    // In:  Query
     // Receive data filtering values
     
     Gyro::set_smooth_factor(serial_read_float());
+    
     dummy = serial_read_float();  // *** NOT IMPLEMENTED *** smoothFactor[ACCEL]
     
     RotationEstimator::set_bw(serial_read_float());
@@ -217,6 +221,7 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'W':
     // Write EEPROM
 
+    flight_control_write_eeprom();
     Gyro::write_eeprom();
     RotationEstimator::write_eeprom();
 
@@ -227,16 +232,8 @@ handle_serial_telemetry(char query)    // In:  Query
     };
 
     eeprom_write_ver();
-    
-#if 0      
-    writeFloat(levelLimit, LEVELLIMIT_ADR);   
-    writeFloat(levelOff, LEVELOFF_ADR); 
-    writeFloat(xmitFactor, XMITFACTOR_ADR);
-    writeFloat(smoothFactor[GYRO], GYROSMOOTH_ADR);
-    writeFloat(smoothFactor[ACCEL], ACCSMOOTH_ADR);
-    zeroIntegralError();
-#endif
-  break;
+
+    break;
 
   case 'B':
     // Send roll and pitch rotation rate (gyro) PID settings
@@ -285,17 +282,21 @@ handle_serial_telemetry(char query)    // In:  Query
     // Send auto level configuration values
     // *** NOT IMPLEMENTED YET ***
     
-    Serial.print(0 /* levelLimit */);
+    Serial.print((int16_t)(receiver_rot_gain * 1000), DEC);  // levelLimit
+    
     print_comma();
-    Serial.println(0 /* levelOff */);
+    Serial.println(receiver_rot_limit);  // levelOff
     break;
     
   case 'J':
     // Send flight control configuration values
 
-    Serial.print(g_windup_guard);
+    // The configurator only supports a single windup guard value
+    
+    Serial.print(rot_rate_pid[ROLL].get_windup_guard());
+    
     print_comma();
-    Serial.println(0.0 /* *** NOT IMPLEMENTED *** xmitFactor */); 
+    Serial.println(receiver_rot_rate_gain);  // xmitFactor
     break;
     
   case 'L':
@@ -303,6 +304,7 @@ handle_serial_telemetry(char query)    // In:  Query
     
     Serial.print(Gyro::get_smooth_factor());
     print_comma();
+    
     Serial.print(0.0 /* *** NOT IMPLEMENTED *** smoothFactor[ACCEL] */);
     print_comma();
     
@@ -424,7 +426,7 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'T':
     // Send processed transmitter values
     
-    Serial.print(0.0 /* xmitFactor */);
+    Serial.print(receiver_rot_rate_gain);  // xmitFactor
     print_comma();
 
     Serial.print(0 /* transmitterCommand[ROLL] */);

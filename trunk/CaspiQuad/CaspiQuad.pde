@@ -54,8 +54,6 @@ uint8_t           sensors_setup_cycles = 0;
 Gyro              gyro[NUM_ROTATIONS];
 RotationEstimator rot_estimator[NUM_ROTATIONS];
 
-float             g_windup_guard = 3.0;
-
 PID               rot_rate_pid[NUM_ROTATIONS];
 PID               rot_pid[NUM_ROTATIONS];
 
@@ -64,8 +62,16 @@ float             rot_correction[NUM_ROTATIONS];   // (rad/sec)
 //float             gyro_rad_per_sec[NUM_ROTATIONS];
 
 float             receiver_rot_rate_gain = 0.002;  // (rad/sec)
+                    // Multiplies the receiver rotation command (cenetered)
+                    // to generate target rotation rate
 float             receiver_rot_gain      = 0.002;  // (rad)
+                    // Multiplies the receiver rotation command (cenetered)
+                    // to generate target rotation
 uint16_t          receiver_rot_limit     = 100;
+                    // When the receiver rotation command is within +/- this
+                    // limit from the center, the quad is stabilized for
+                    // rotation.  Beyond this, it is stabilized for rotation
+                    // rate.
 
 int16_t           motor_throttle_command;
 int16_t           motor_rot_command[NUM_ROTATIONS];
@@ -74,6 +80,47 @@ int16_t           motor_rot_command[NUM_ROTATIONS];
 
 char              query;
 boolean           cont_query = false;
+
+
+//============================== read_eeprom() ==============================
+//
+// Read the configuration parameters from EEPROM, if valid.  If not, set
+// defaults.
+
+int                         // Ret: Next address in EEPROM
+flight_control_read_eeprom(void)
+
+{
+  int eeprom_base_addr = EEPROM_FLIGHT_CONTROL_BASE_ADDR;
+  
+  if (eeprom_is_ok())
+  {
+    receiver_rot_rate_gain = eeprom_read_float(eeprom_base_addr);
+    eeprom_base_addr += sizeof(float);
+    receiver_rot_gain = eeprom_read_float(eeprom_base_addr);
+    eeprom_base_addr += sizeof(float);
+    receiver_rot_limit = eeprom_read_float(eeprom_base_addr);
+    eeprom_base_addr += sizeof(float);
+  }
+  
+  return eeprom_base_addr;
+};
+
+
+//============================== write_eeprom() =============================
+//
+// Write the configuration parameters to EEPROM
+
+void flight_control_write_eeprom(void)
+
+{
+  eeprom_write_float(EEPROM_FLIGHT_CONTROL_BASE_ADDR,
+                     receiver_rot_rate_gain);
+  eeprom_write_float(EEPROM_FLIGHT_CONTROL_BASE_ADDR + sizeof(float),
+                     receiver_rot_gain);
+  eeprom_write_float(EEPROM_FLIGHT_CONTROL_BASE_ADDR + (2 * sizeof(float)),
+                     receiver_rot_limit);
+};
 
 
 //=============================== setup() =====================================
@@ -85,7 +132,7 @@ boolean           cont_query = false;
 void setup()
 {
   uint8_t  rot;
-  int      eeprom_addr = EEPROM_FLIGHT_CONTROL_BASE_ADDR;
+  int      eeprom_addr;
 
 
   analogReference(ANALOG_REFERENCE);
@@ -95,6 +142,8 @@ void setup()
   eeprom_init();
   motors_init();
   accel_init();
+
+  eeprom_addr = flight_control_read_eeprom();
   
   // Gyro
   
@@ -117,19 +166,19 @@ void setup()
   for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
   {
     eeprom_addr = rot_rate_pid[rot].read_eeprom(eeprom_addr,
-                                                1,               // P
-                                                0,               // I
-                                               -50,              // D
-                                                g_windup_guard); // windup_guard (rad/sec/sec)
+                                                1,    // P
+                                                0,    // I
+                                               -50,   // D
+                                                3.0); // windup_guard (rad/sec/sec)
   };
 
   for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
   {
     eeprom_addr = rot_pid[rot].read_eeprom(eeprom_addr,
-                                           1.5,                  // P
-                                           0,                    // I
-                                          -30,                   // D
-                                           g_windup_guard);      // windup_guard (rad/sec)
+                                           1.5,   // P
+                                           0,     // I
+                                          -30,    // D
+                                           3.0);  // windup_guard (rad/sec)
   };
 
   Indicator::indicate(Indicator::SETUP);
@@ -272,7 +321,7 @@ void loop ()
     //-----------------
 
     receiver_ok = receiver_get_status();
-    temp_receiver_raw = 0;
+    temp_receiver_raw = 0;   // Default value in case receiver is not OK
 
     // Read pitch command and calculate error
     

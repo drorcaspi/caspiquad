@@ -28,9 +28,10 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
-#define MOTORS_BRUSHED
+//#define MOTORS_BRUSHED
 
-#define MOTORS_PWM_FREQ_HZ  488   // Hz
+#define MOTORS_PWM_FREQ_HZ    488
+#define MOTORS_PWM_CYCLE_USEC (1000000 / MOTORS_PWM_FREQ_HZ)
 
 // Maximum, minimum and range values of motor command, used as AnalogWrite()
 // parameter
@@ -48,8 +49,8 @@
 #ifndef MOTORS_BRUSHED
 // Maximum and minimim motors control pulse widths
 
-#define MOTORS_PW_MAX_USEC    1999
-#define MOTORS_PW_MIN_USEC    1000
+#define MOTORS_PW_MAX_USEC    1799
+#define MOTORS_PW_MIN_USEC     800
 #define MOTORS_PW_RANGE_USEC  (MOTORS_PW_MAX_USEC - MOTORS_PW_MIN_USEC + 1)
 #endif
 
@@ -64,8 +65,8 @@
 // In brushless mode, AnalogWrite() controls the ESCs, with pulse width range
 // as defined above
 
-#define MOTOR_THROTTLE_MAX    ((MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_FREQ_HZ)
-#define MOTOR_THROTTLE_MIN    ((MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_FREQ_HZ)
+#define MOTOR_THROTTLE_MAX    ((MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
+#define MOTOR_THROTTLE_MIN    ((MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
 #endif
 #define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_MAX - MOTOR_THROTTLE_MIN + 1)
 
