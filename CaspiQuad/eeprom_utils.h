@@ -34,15 +34,15 @@
 //
 //=============================================================================
 
-#define EEPROM_VER 2  // Version #.  Increment when changes are not backward-
+#define EEPROM_VER 3  // Version #.  Increment when changes are not backward-
                       // compatible.
                       
-//-----------------------------------------------------------------------------\
+//-----------------------------------------------------------------------------
 // EEPROM Base Addresses
 // 
 // Base addresses are defined per functional block.  Offsets of individual
 // variables stored in the EEPROM are the responsibility of each block.
-//-----------------------------------------------------------------------------\
+//-----------------------------------------------------------------------------
 
 #define EEPROM_UTILS_BASE_ADDR           0  // EEPROM Handler block
 #define EEPROM_FLIGHT_CONTROL_BASE_ADDR  8
