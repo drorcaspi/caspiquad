@@ -81,7 +81,7 @@ accel_init(void)
 
   current_accel_data[X_AXIS] = 0;
   current_accel_data[Y_AXIS] = 0;
-  current_accel_data[Z_AXIS] = ACCEL_1G;
+  current_accel_data[Z_AXIS] = (int8_t)ACCEL_TYP_1G;
       
   Wire.begin();   // join i2c bus (address optional for master)
 
@@ -114,7 +114,7 @@ accel_init(void)
 //
 // Read the accelerometers
 
-void
+uint16_t                                  // Ret: Sum of 3 axis squared
 accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
 
 {
@@ -127,7 +127,7 @@ accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
   while(Wire.available())
   {
     current_accel_data[X_AXIS] = (int8_t)Wire.receive();
-  }
+  };
 
   // Read Y
   
@@ -138,7 +138,7 @@ accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
   while(Wire.available())
   {
     current_accel_data[Y_AXIS] = (int8_t)Wire.receive();
-  }
+  };
 
   // Read Z
   
@@ -149,8 +149,9 @@ accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
   while(Wire.available())
   {
     current_accel_data[Z_AXIS] = (int8_t)Wire.receive();
-  }
-  accel_get_current(accel_data);
+  };
+  
+  return accel_get_current(accel_data);
 };
 
 
@@ -159,13 +160,17 @@ accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
 // Get the current accelerometers data (that has been read before from the h/w)
 // This function is intended for reading of telemetry.
 
-void
+uint16_t                                         // Ret: Sum of 3 axis squared
 accel_get_current(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
 
 {
   accel_data[X_AXIS] = current_accel_data[X_AXIS];
   accel_data[Y_AXIS] = current_accel_data[Y_AXIS];
   accel_data[Z_AXIS] = current_accel_data[Z_AXIS];
+
+  return ((int16_t)current_accel_data[X_AXIS] * (int16_t)current_accel_data[X_AXIS]) + 
+         ((int16_t)current_accel_data[Y_AXIS] * (int16_t)current_accel_data[Y_AXIS]) +
+         ((int16_t)current_accel_data[Z_AXIS] * (int16_t)current_accel_data[Z_AXIS]);
 };
 
 

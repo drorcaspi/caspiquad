@@ -50,6 +50,9 @@
 
 #define ACCEL_RANGE   (ACCEL_MAX - ACCEL_MIN + 1)
 #define ACCEL_1G      (1.0 / 0.018)   // Nominal accelerometer reading @ 1G
+#define ACCEL_MIN_1G  (1.0 / ACCEL_MAX_SENS_G)   // Nominal accelerometer reading @ 1G
+#define ACCEL_TYP_1G  (1.0 / ACCEL_TYP_SENS_G)   // Nominal accelerometer reading @ 1G
+#define ACCEL_MAX_1G  (1.0 / ACCEL_MIN_SENS_G)   // Nominal accelerometer reading @ 1G
 
 
 //=============================== accel_init() ================================
@@ -65,7 +68,7 @@ accel_init(void);
 //
 // Read the accelerometers
 
-void
+uint16_t                                   // Ret: Sum of 3 axis squared
 accel_read(int8_t accel_data[NUM_AXIS]);   // Out: 3 axis data
 
 
@@ -74,7 +77,7 @@ accel_read(int8_t accel_data[NUM_AXIS]);   // Out: 3 axis data
 // Get the current accelerometers data (that has been read before from the h/w)
 // This function is intended for reading of telemetry.
 
-void
+uint16_t                                          // Ret: Sum of 3 axis squared
 accel_get_current(int8_t accel_data[NUM_AXIS]);   // Out: 3 axis data
 
 

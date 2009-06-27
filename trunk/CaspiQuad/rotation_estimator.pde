@@ -44,7 +44,16 @@
 // Minimum accelerometer reading, below which the reading is not considered
 // reiable for rotation calculation
 
-#define ROTATION_ESTIMATOR_ACCEL_RAW_MIN (ACCEL_1G / 4)
+#define ROTATION_ESTIMATOR_ACCEL_RAW_MIN (ACCEL_TYP_1G / 4)
+
+// Absolute acceleration must be close to 1G for taking into account
+
+#define ROTATION_ESTIMATOR_ACCEL_SQ_MAX  ((ACCEL_MAX_1G * 1.1) * (ACCEL_MAX_1G * 1.1))
+#define ROTATION_ESTIMATOR_ACCEL_SQ_MIN  ((ACCEL_MIN_1G * 0.9) * (ACCEL_MIN_1G * 0.9))
+
+// Limit on the time estimation is based on gyro input only
+
+#define ROTATION_ESTIMATOR_INAVLID_ACC_CYCLE_LIMIT 25
 
 
 //=============================================================================
@@ -68,6 +77,7 @@ int   RotationEstimator::eeprom_base_addr;   // Base address in EEPROM
 RotationEstimator::RotationEstimator()
 
 {
+  invalid_acc_cycle_counter = 0;
   init(0.0, 0.0);
 };
   
@@ -161,21 +171,30 @@ RotationEstimator::init(
 
 float                        // Ret: New rotation estimate
 RotationEstimator::estimate(
-  float  rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                             //      scaled from gyro reading
-  int8_t accel_raw_base,     // In:  Raw accelerometer reading, base
-  int8_t accel_raw_perp)     // In:  Raw accelerometer reading, perpendicular          
+  float    rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
+                               //      scaled from gyro reading
+  int8_t   accel_raw_base,     // In:  Raw accelerometer reading, base
+  int8_t   accel_raw_perp,     // In:  Raw accelerometer reading, perpendicular
+  uint16_t accel_abs_sq)       // In:  Sum of accel readings squared     
 
 {
   float rotation_diff;
 
 
-  if ((accel_raw_base >=  ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
-      (accel_raw_base <= -ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
-      (accel_raw_perp >=  ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
-      (accel_raw_perp <= -ROTATION_ESTIMATOR_ACCEL_RAW_MIN))
+  if (((accel_raw_base >= (int8_t) ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
+       (accel_raw_base <= (int8_t)-ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
+       (accel_raw_perp >= (int8_t) ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
+       (accel_raw_perp <= (int8_t)-ROTATION_ESTIMATOR_ACCEL_RAW_MIN)
+      )  &&
+      (
+       (accel_abs_sq   <= (uint16_t)ROTATION_ESTIMATOR_ACCEL_SQ_MAX)  &&
+       (accel_abs_sq   >= (uint16_t)ROTATION_ESTIMATOR_ACCEL_SQ_MIN)
+      )
+     )
   {
     // Accelerometer readings can be used as raw rotation measurement
+
+    invalid_acc_cycle_counter = 0;
 
 #if 0    
     Serial.print(rotation_rate_in);
@@ -196,9 +215,15 @@ RotationEstimator::estimate(
 
   else
   {
-    // Accelerometer readings are not reliable, use only rotation rate input
-    
-    rotation_estimate += cycle * (integ1_out + rotation_rate_in);
+    // Accelerometer readings are not reliable, use only rotation rate input.
+    // We limit the number of cycles this is done, since integration error accumulate
+    // over time.
+
+    if (invalid_acc_cycle_counter < ROTATION_ESTIMATOR_INAVLID_ACC_CYCLE_LIMIT)
+    {
+      invalid_acc_cycle_counter++;
+      rotation_estimate += cycle * (integ1_out + rotation_rate_in);
+    };
   };
   
   return rotation_estimate;
