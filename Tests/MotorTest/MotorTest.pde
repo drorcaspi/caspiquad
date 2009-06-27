@@ -30,6 +30,7 @@ void setup()
 
   
   Serial.begin(115200);
+  pinMode(BUZZER_PIN, OUTPUT);
 
   Serial.println("ESC Throttle Range Setup");
   Serial.println("Setting Throttle High");

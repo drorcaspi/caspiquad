@@ -197,13 +197,14 @@ void loop ()
   uint32_t current_msec;
   uint8_t  cycle_msec;
   int8_t   accel_raw[NUM_AXIS];
+  uint16_t accel_abs_sq;
   //uint16_t gyro_raw[NUM_ROTATIONS];
   float    rotation_raw[NUM_ROTATIONS];
-  float    pitch_estimate;                     // (rad)
-  float    roll_estimate;                      // (rad)
+  float    pitch_estimate;                  // (rad)
+  float    roll_estimate;                   // (rad)
   int16_t  temp_receiver_raw;
-  float    target_rot[NUM_ROTATIONS];        // (rad)
-  float    target_rot_rate[NUM_ROTATIONS];   // (rad/sec)
+  //float    target_rot[NUM_ROTATIONS];       // (rad)
+  //float    target_rot_rate[NUM_ROTATIONS];  // (rad/sec)
   float    rot_error[NUM_ROTATIONS];        // (rad)
   float    rot_rate_error[NUM_ROTATIONS];   // (rad/sec)
   //uint16_t throttle_command;
@@ -251,7 +252,7 @@ void loop ()
 
   // Read the accelerometers and calculate raw rotations
   
-  accel_read(accel_raw);
+  accel_abs_sq = accel_read(accel_raw);
   
 #if PRINT_ACCEL
   accel_print_stats();
@@ -274,10 +275,12 @@ void loop ()
 
   pitch_estimate = rot_estimator[PITCH].estimate(gyro[PITCH].get_rad_per_sec(),
                                                  accel_raw[X_AXIS],
-                                                 accel_raw[Z_AXIS]);
+                                                 accel_raw[Z_AXIS],
+                                                 accel_abs_sq);
   roll_estimate = rot_estimator[ROLL].estimate(gyro[ROLL].get_rad_per_sec(),
                                                accel_raw[Y_AXIS],
-                                               accel_raw[Z_AXIS]);
+                                               accel_raw[Z_AXIS],
+                                               accel_abs_sq);
 
 #if PRINT_ROT_ESTIMATE
   rot_estimator[ROLL].print_stats();
@@ -383,77 +386,24 @@ void loop ()
     
     rot_rate_error[YAW] = ((float)temp_receiver_raw * receiver_rot_rate_gain) - 
                           gyro[YAW].get_smoothed_rad_per_sec();
-    target_rot[YAW] = 0.0;
+    rot_error[YAW] = 0.0;
 
 #if PRINT_RECEIVER_ROT
-  for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-  {
-    Serial.print(rot_rate_error[rot]);
-    Serial.print("\t");
-    Serial.print(rot_error[rot]);
-    Serial.print("\t");
-  };
-  Serial.println("\t");
+    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+    {
+      Serial.print(rot_rate_error[rot]);
+      Serial.print("\t");
+      Serial.print(rot_error[rot]);
+      Serial.print("\t");
+    };
+    Serial.println("\t");
 #endif
 
-#if 0
-    rot_correction[PITCH] = rot_pid[PITCH].update(0.0,              // target_position (rad)
-                                                  pitch_estimate);  // current_position (rad)
-    rot_correction[ROLL] = rot_pid[ROLL].update(0.0,                // target_position (rad)
-                                                roll_estimate);     // current_position (rad)
-#if PRINT_ROT_CORRECTION
-    Serial.print(rot_correction[PITCH]);
-    Serial.print("\t");
-    Serial.println(rot_correction[ROLL]);
-#endif
-#endif
-
-#if 1  // Two PIDs using both rotation and gyro
-  for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-  {
-    motor_rot_command[rot] = rot_pid[rot].update(rot_error[rot]) +
-                             rot_rate_pid[rot].update(rot_rate_error[rot]);
-  };
-#endif
-#if 0  // PID using both rotation and gyro
-  motor_rot_command[PITCH] = 
-    rot_rate_pid[PITCH].update(target_rot[PITCH],           // target position (rad)
-                               pitch_estimate,                // current position (rad)
-                               target_rot_rate[PITCH],      // target_rate (rad/sec)
-                               gyro[PITCH].get_smoothed_rad_per_sec());
-                                                              // current_rate (rad/sec)
-  motor_rot_command[ROLL] = 
-    rot_rate_pid[ROLL].update(target_rot[ROLL],             // target position (rad)
-                              roll_estimate,                  // current position (rad)
-                              target_rot_rate[ROLL],        // target_rate (rad/sec)
-                              gyro[ROLL].get_smoothed_rad_per_sec());
-                                                              // current_rate (rad/sec)
-  motor_rot_command[YAW] = 
-    rot_rate_pid[YAW].update(0.0,                             // target position (rad)
-                             0.0,                             // current position (rad)
-                             target_rot_rate[YAW],          // target_rate (rad/sec)
-                             gyro[YAW].get_smoothed_rad_per_sec());
-                                                              // current_rate (rad/sec)
-#endif
-#if 0  
-    motor_rot_command[PITCH] = 
-      rot_rate_pid[PITCH].update(rot_correction[PITCH],         // target_position (rad/sec)
-                                 gyro[PITCH].get_smoothed_rad_per_sec());
-                                                                // current_position (rad/sec)
-    motor_rot_command[ROLL] = 
-      rot_rate_pid[ROLL].update(rot_correction[ROLL],           // target_position (rad/sec)
-                                gyro[ROLL].get_smoothed_rad_per_sec());
-                                                                // current_position (rad/sec)
-    motor_rot_command[YAW] = 
-      rot_rate_pid[YAW].update(0.0,                             // target_position (rad/sec)
-                               gyro[YAW].get_smoothed_rad_per_sec());
-                                                                // current_position (rad/sec)
-#endif
-#if 0
-    motor_rot_command[PITCH] = motor_rot_gain * rot_correction[PITCH];
-    motor_rot_command[ROLL] = motor_rot_gain * rot_correction[ROLL];
-    motor_rot_command[YAW] = 0.0;
-#endif
+    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+    {
+      motor_rot_command[rot] = rot_pid[rot].update(rot_error[rot]) +
+                               rot_rate_pid[rot].update(rot_rate_error[rot]);
+    };
 
 #if PRINT_MOTOR_ROT_COMMAND           
     Serial.print(motor_rot_command[PITCH]);
@@ -477,9 +427,9 @@ void loop ()
       motor_throttle_command = MOTOR_THROTTLE_MIN;
     
     motors_command(motor_throttle_command,
-                   0 /*motor_rot_command[PITCH]*/,
+                   motor_rot_command[PITCH],
                    motor_rot_command[ROLL],
-                   0 /*motor_rot_command[YAW]*/);
+                   motor_rot_command[YAW]);
   } 
   
 #if PRINT_MOTOR_COMMAND

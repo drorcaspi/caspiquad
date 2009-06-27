@@ -41,11 +41,14 @@
 
 // AeroQuad Configurator Definitions
 
-#define SENSOR_DISPLAY_RANGE        1000
+#define SENSOR_DISPLAY_RANGE                  1000
 
-#define MOTOR_COMMAND_DISPLAY_MIN   1000
-#define MOTOR_COMMAND_DISPLAY_MAX   2000
-#define MOTOR_COMMAND_DISPLAY_RANGE (MOTOR_COMMAND_DISPLAY_MAX - MOTOR_COMMAND_DISPLAY_MIN)
+#define RECEIVER_ROT_GAIN_DISPLAY_FACTOR      1000
+#define RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR  100
+
+#define MOTOR_COMMAND_DISPLAY_MIN             1000
+#define MOTOR_COMMAND_DISPLAY_MAX             2000
+#define MOTOR_COMMAND_DISPLAY_RANGE           (MOTOR_COMMAND_DISPLAY_MAX - MOTOR_COMMAND_DISPLAY_MIN)
 
 
 //=============================================================================
@@ -180,7 +183,7 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'G':
     // Receive auto level configuration values
     
-    receiver_rot_gain = serial_read_float() / 1000;  // levelLimit
+    receiver_rot_gain = serial_read_float() / RECEIVER_ROT_GAIN_DISPLAY_FACTOR;  // levelLimit
     
     receiver_rot_limit = serial_read_float();  // levelOff
 
@@ -203,7 +206,8 @@ handle_serial_telemetry(char query)    // In:  Query
       rot_pid[rot].set_windup_guard(windup_guard);
     };
     
-    receiver_rot_rate_gain = serial_read_float();  // xmitFactor
+    receiver_rot_rate_gain = serial_read_float() /
+                             RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR;  // xmitFactor
 
     break;
   
@@ -280,9 +284,8 @@ handle_serial_telemetry(char query)    // In:  Query
     
   case 'H':
     // Send auto level configuration values
-    // *** NOT IMPLEMENTED YET ***
     
-    Serial.print((int16_t)(receiver_rot_gain * 1000), DEC);  // levelLimit
+    Serial.print((int16_t)(receiver_rot_gain * RECEIVER_ROT_GAIN_DISPLAY_FACTOR), DEC);  // levelLimit
     
     print_comma();
     Serial.println(receiver_rot_limit);  // levelOff
@@ -296,7 +299,7 @@ handle_serial_telemetry(char query)    // In:  Query
     Serial.print(rot_rate_pid[ROLL].get_windup_guard());
     
     print_comma();
-    Serial.println(receiver_rot_rate_gain);  // xmitFactor
+    Serial.println(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
     break;
     
   case 'L':
@@ -426,7 +429,7 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'T':
     // Send processed transmitter values
     
-    Serial.print(receiver_rot_rate_gain);  // xmitFactor
+    Serial.print(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
     print_comma();
 
     Serial.print(0 /* transmitterCommand[ROLL] */);

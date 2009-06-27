@@ -69,8 +69,11 @@ private:
 
   // State Variables
   
-  float integ1_out;        // Output of the first integrator (rad/sec)
-  float rotation_estimate; // Output of the second integrator (rad)
+  float        integ1_out;        // Output of the first integrator (rad/sec)
+  float        rotation_estimate; // Output of the second integrator (rad)
+  uint8_t      invalid_acc_cycle_counter;
+                                  // Counts the number of cycles accellerometer
+                                  // inputs have been invalid
   
 public:
   //============================== Constructor ==================================
@@ -129,11 +132,13 @@ public:
 
   float                        // Ret: New rotation estimate
   estimate(
-    float  rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                               //      scaled from gyro reading
-    int8_t accel_raw_base,     // In:  Raw accelerometer reading, base
-    int8_t accel_raw_perp);    // In:  Raw accelerometer reading, perpendicular          
+    float    rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
+                                //      scaled from gyro reading
+    int8_t   accel_raw_base,     // In:  Raw accelerometer reading, base
+    int8_t   accel_raw_perp,     // In:  Raw accelerometer reading, perpendicular
+    uint16_t accel_abs_sq);      // In:  Sum of accel readings squared     
 
+#if 0
   //============================== estimate() ===================================
   //
   // Estimate rotation angle for one rotation axis, based on rotation rate and
@@ -156,6 +161,7 @@ public:
   estimate(
     float  rotation_rate_in);  // In:  Rotation rate measurement, in rad/sec,
                                //      scaled from gyro reading
+#endif
 
   //============================== read_eeprom() ==============================
   //

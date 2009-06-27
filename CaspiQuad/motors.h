@@ -28,8 +28,6 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
-//#define MOTORS_BRUSHED
-
 #define MOTORS_PWM_FREQ_HZ    488
 #define MOTORS_PWM_CYCLE_USEC (1000000 / MOTORS_PWM_FREQ_HZ)
 
@@ -46,28 +44,19 @@
 //
 //-----------------------------------------------------------------------------
 
-#ifndef MOTORS_BRUSHED
 // Maximum and minimim motors control pulse widths
 
 #define MOTORS_PW_MAX_USEC    1799
 #define MOTORS_PW_MIN_USEC     800
 #define MOTORS_PW_RANGE_USEC  (MOTORS_PW_MAX_USEC - MOTORS_PW_MIN_USEC + 1)
-#endif
 
 // Maximum, minimum and range values of throttle input
 
-#ifdef MOTORS_BRUSHED
-// In brushed mode, AnalogWrite() commands directly control throttle
-
-#define MOTOR_THROTTLE_MAX    MOTOR_COMMAND_MAX
-#define MOTOR_THROTTLE_MIN    MOTOR_COMMAND_MIN
-#else
 // In brushless mode, AnalogWrite() controls the ESCs, with pulse width range
 // as defined above
 
 #define MOTOR_THROTTLE_MAX    ((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
 #define MOTOR_THROTTLE_MIN    ((uint32_t)((uint32_t)MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
-#endif
 #define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_MAX - MOTOR_THROTTLE_MIN + 1)
 
 // Maximum, minimum and range values of rotation (pitch, roll, yaw) rate input
@@ -108,9 +97,9 @@ void motors_disable(void);
 //
 // Rotation is defined as follows:
 //
-//   Pitch - a positive (nose up) rotation about Y Body Axis
-//   Roll  - a positive (right wing down) rotation about X Body Axis
-//   Yaw   - a positive (nose right) rotation about Z Body Axis
+//   Pitch - nose down rotation about Y Body Axis
+//   Roll  - left wing down rotation about X Body Axis
+//   Yaw   - nose left rotation about Z Body Axis
 //
 // TODO: check whether the above is also how the transmitter works
 //
@@ -127,11 +116,8 @@ void motors_disable(void);
 // However, internally the function also takes into account the following:
 //
 // - Enable or disable status
-// - Motor overheating guard, e.g. limit motor drive if it has been driven over
-//   some limit for too long.
 
-boolean                // Ret: true if motor commands were limited due to, e.g
-                       //      overheating.
+void
 motors_command(
   int16_t  throttle,    // In:  Throttle command
   int16_t  pitch_rate,  // In:  Pitch rate (centered at 0)
@@ -145,8 +131,6 @@ motors_command(
 // These functions are intended for telemetry & printing.
 
 uint8_t motors_get_current_command(uint8_t dir);
-uint8_t motors_get_short_avg(uint8_t dir);
-uint8_t motors_get_long_avg(uint8_t dir);
 
 
 //========================== motors_print_stats() =============================
