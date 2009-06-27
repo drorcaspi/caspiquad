@@ -470,8 +470,9 @@ void loop ()
 
     if (receiver_get_status())
       motor_throttle_command =
-                     (receiver_get_current_raw(THROTTLE_CH)  - RECEIVER_NOM_MIN) /
-                     ((RECEIVER_NOM_MAX - RECEIVER_NOM_MIN) / MOTOR_THROTTLE_RANGE);
+                     ((receiver_get_current_raw(THROTTLE_CH)  - RECEIVER_NOM_MIN) /
+                     ((RECEIVER_NOM_MAX - RECEIVER_NOM_MIN) / MOTOR_THROTTLE_RANGE)) +
+                     MOTOR_THROTTLE_MIN;
     else
       motor_throttle_command = MOTOR_THROTTLE_MIN;
     
