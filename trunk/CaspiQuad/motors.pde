@@ -266,33 +266,41 @@ motors_command(
     // Set motor commands and averages to the minimum
     
     for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
-      motors_current_commands[dir] = MOTOR_COMMAND_MIN;
+      motors_current_commands[dir] = (int16_t)MOTOR_THROTTLE_MIN;
   }
   
   else
   {
     // Limit the inputs to legal values
     
-    throttle   = constrain(throttle,   MOTOR_THROTTLE_MIN,      MOTOR_THROTTLE_MAX);
-    roll_rate  = constrain(roll_rate,  MOTOR_ROTATION_RATE_MIN, MOTOR_ROTATION_RATE_MAX);
-    pitch_rate = constrain(pitch_rate, MOTOR_ROTATION_RATE_MIN, MOTOR_ROTATION_RATE_MAX);
-    yaw_rate   = constrain(yaw_rate,   MOTOR_ROTATION_RATE_MIN, MOTOR_ROTATION_RATE_MAX);
+    throttle   = constrain(throttle,
+                           (int16_t)MOTOR_THROTTLE_MIN,
+                           (int16_t)MOTOR_THROTTLE_MAX);
+    roll_rate  = constrain(roll_rate,
+                           (int16_t)MOTOR_ROTATION_RATE_MIN,
+                           (int16_t)MOTOR_ROTATION_RATE_MAX);
+    pitch_rate = constrain(pitch_rate,
+                           (int16_t)MOTOR_ROTATION_RATE_MIN,
+                           (int16_t)MOTOR_ROTATION_RATE_MAX);
+    yaw_rate   = constrain(yaw_rate,
+                           (int16_t)MOTOR_ROTATION_RATE_MIN,
+                           (int16_t)MOTOR_ROTATION_RATE_MAX);
       
     // Calculate motor commands.  Do this in signed 16 bits to avoid overflow
     // or underflow.
     
     motors_current_commands[FRONT] = constrain(throttle + pitch_rate + yaw_rate,
-                                               MOTOR_COMMAND_MIN,
-                                               MOTOR_COMMAND_MAX);
+                                               (int16_t)MOTOR_THROTTLE_MIN,
+                                               (int16_t)MOTOR_THROTTLE_MAX);
     motors_current_commands[REAR ] = constrain(throttle - pitch_rate + yaw_rate,
-                                               MOTOR_COMMAND_MIN,
-                                               MOTOR_COMMAND_MAX);
+                                               (int16_t)MOTOR_THROTTLE_MIN,
+                                               (int16_t)MOTOR_THROTTLE_MAX);
     motors_current_commands[RIGHT] = constrain(throttle + roll_rate  - yaw_rate,
-                                               MOTOR_COMMAND_MIN,
-                                               MOTOR_COMMAND_MAX);
+                                               (int16_t)MOTOR_THROTTLE_MIN,
+                                               (int16_t)MOTOR_THROTTLE_MAX);
     motors_current_commands[LEFT ] = constrain(throttle - roll_rate  - yaw_rate,
-                                               MOTOR_COMMAND_MIN,
-                                               MOTOR_COMMAND_MAX);
+                                               (int16_t)MOTOR_THROTTLE_MIN,
+                                               (int16_t)MOTOR_THROTTLE_MAX);
   };
 
   // Now send the commands to the motors

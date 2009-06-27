@@ -125,7 +125,11 @@ const uint8_t *const Indicator::p_patterns[] =
 void Indicator::init(void)
 
 {
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  
   digitalWrite(LED_PIN, 0);
+  digitalWrite(BUZZER_PIN, 0);
 };
 
 

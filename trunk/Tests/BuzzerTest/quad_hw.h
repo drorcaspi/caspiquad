@@ -77,7 +77,7 @@
 #elif (ANALOG_REFERENCE == INTERNAL)
   #define ANALOG_REFERENCE_V  1.1
 #elif (ANALOG_REFERENCE == EXTERNAL)
-  #define ANALOG_REFERENCE_V  3.25
+  #define ANALOG_REFERENCE_V  2.95 //3.3
 #else
   #error Illegal ANALOG_REFERENCE
 #endif

@@ -33,8 +33,19 @@ void setup()
 
   Serial.println("ESC Throttle Range Setup");
   Serial.println("Setting Throttle High");
+  Serial.print(MOTORS_PWM_CYCLE_USEC, DEC);
+  Serial.print("\t");
+  Serial.print((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE), DEC);
+  Serial.print("\t");
+  Serial.print(MOTOR_THROTTLE_MAX, DEC);
+  Serial.print("\t");
+  Serial.println(MOTOR_THROTTLE_MIN, DEC);
+  
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(200);
+  digitalWrite(BUZZER_PIN, LOW);
 
-  analogWrite(FRONT_MOTOR_PIN, MOTOR_THROTTLE_MIN);
+  analogWrite(FRONT_MOTOR_PIN, MOTOR_THROTTLE_MAX);
   analogWrite(REAR_MOTOR_PIN,  MOTOR_THROTTLE_MAX);
   analogWrite(RIGHT_MOTOR_PIN, MOTOR_THROTTLE_MAX);
   analogWrite(LEFT_MOTOR_PIN,  MOTOR_THROTTLE_MAX);
@@ -45,6 +56,10 @@ void setup()
 
   Serial.println("Setting Throttle Low");
 
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(200);
+  digitalWrite(BUZZER_PIN, LOW);
+
   analogWrite(FRONT_MOTOR_PIN, MOTOR_THROTTLE_MIN);
   analogWrite(REAR_MOTOR_PIN,  MOTOR_THROTTLE_MIN);
   analogWrite(RIGHT_MOTOR_PIN, MOTOR_THROTTLE_MIN);
@@ -54,16 +69,24 @@ void setup()
   while (! Serial.available());
   c = Serial.read();
 
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(200);
+  digitalWrite(BUZZER_PIN, LOW);
+
   Serial.println("Enter + to increase throttle, - to decrease throttle");
   while (true)
   {
     while (! Serial.available());
     c = Serial.read();
-    if ((c == '+') && (throttle <= (MOTOR_THROTTLE_MIN - 10)))
+    if ((c == '+') && (throttle <= (MOTOR_THROTTLE_MAX - 10)))
       throttle += 10;
     else if ((c == '-') && (throttle >= (MOTOR_THROTTLE_MIN + 10)))
       throttle -= 10;
     Serial.println((int16_t)throttle, DEC);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(200);
+    digitalWrite(BUZZER_PIN, LOW);
 
     analogWrite(FRONT_MOTOR_PIN, throttle);
     analogWrite(REAR_MOTOR_PIN,  throttle);
