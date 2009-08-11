@@ -198,16 +198,12 @@ void loop ()
   uint8_t  cycle_msec;
   int8_t   accel_raw[NUM_AXIS];
   uint16_t accel_abs_sq;
-  //uint16_t gyro_raw[NUM_ROTATIONS];
   float    rotation_raw[NUM_ROTATIONS];
   float    pitch_estimate;                  // (rad)
   float    roll_estimate;                   // (rad)
   int16_t  temp_receiver_raw;
-  //float    target_rot[NUM_ROTATIONS];       // (rad)
-  //float    target_rot_rate[NUM_ROTATIONS];  // (rad/sec)
   float    rot_error[NUM_ROTATIONS];        // (rad)
   float    rot_rate_error[NUM_ROTATIONS];   // (rad/sec)
-  //uint16_t throttle_command;
   uint8_t  rot;
   boolean  receiver_ok;
   
@@ -219,10 +215,8 @@ void loop ()
   current_msec = millis();
   cycle_msec = (uint8_t)(current_msec- last_msec);
   
-#if 1
   if (cycle_msec > (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
     Indicator::indicate(Indicator::SW_WARN);
-#endif
 
   if (cycle_msec > max_cycle_msec)
     max_cycle_msec = cycle_msec;
@@ -313,7 +307,7 @@ void loop ()
     {
       sensors_setup_cycles = 0;
       Indicator::indicate(Indicator::SETUP_ERR);
-    }
+    };
   }
     
 
@@ -396,13 +390,20 @@ void loop ()
       Serial.print(rot_error[rot]);
       Serial.print("\t");
     };
-    Serial.println("\t");
+    Serial.println();
 #endif
 
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
+#if PRINT_PID
+      Serial.print(rot, DEC);
+      Serial.print("\t");
+#endif
       motor_rot_command[rot] = rot_pid[rot].update(rot_error[rot]) +
                                rot_rate_pid[rot].update(rot_rate_error[rot]);
+#if PRINT_PID
+      Serial.println();
+#endif
     };
 
 #if PRINT_MOTOR_ROT_COMMAND           

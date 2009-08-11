@@ -225,6 +225,13 @@ RotationEstimator::estimate(
       rotation_estimate += cycle * (integ1_out + rotation_rate_in);
     };
   };
+
+  // Limit rotation estimate to +/- 180 degrees
+  
+  if (rotation_estimate > PI)
+    rotation_estimate -= PI;
+  else if (rotation_estimate < -PI)
+    rotation_estimate += PI;
   
   return rotation_estimate;
 };
