@@ -137,6 +137,17 @@ float PID::update(float error)
   float d_term;
 
 
+#ifdef PRINT_PID
+  Serial.print(p);
+  Serial.print("\t");
+  Serial.print(i);
+  Serial.print("\t");
+  Serial.print(d);
+  Serial.print("\t");
+  Serial.print(error);
+  Serial.print("\t");
+#endif
+
   // Calculate error integral and limit integrated_error to +/-windup_guard
   
   integrated_error += error;
