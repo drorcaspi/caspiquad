@@ -46,7 +46,7 @@
 #define PRINT_ROT_ESTIMATE        0
 #define PRINT_ROT_CORRECTION      0
 #define PRINT_MOTOR_ROT_COMMAND   0
-#define PRINT_PID                 1
+#define PRINT_PID                 0
 #define PRINT_MOTOR_COMMAND       0
 #define SUPPORT_TELEMENTRY        1
 

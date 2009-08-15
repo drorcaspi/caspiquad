@@ -137,7 +137,7 @@ float PID::update(float error)
   float d_term;
 
 
-#ifdef PRINT_PID
+#if PRINT_PID
   Serial.print(p);
   Serial.print("\t");
   Serial.print(i);

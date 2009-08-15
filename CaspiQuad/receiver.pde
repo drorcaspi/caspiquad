@@ -53,6 +53,35 @@
 
 #define RECEIVER_MAX_ERRORS 4
 
+//-----------------------------------------------------------------------------
+//
+// Receiver rest state determination
+
+#define RECEIVER_REST_AVG_DEV_MAX    2    // How much the receiver reading can
+                                          // deviate from the long-term average
+                                          // and still be considered stable.
+#define RECEIVER_REST_ZERO_DEV_MAX 100    // How much the receiver reading can
+                                          // deviate from zero and still be
+                                          // zero if stable.
+#define RECEIVER_LONG_AVG_FACTOR     5    // Determines the averaging period. For
+                                          // 20 msec rate this is 2^5 * 20 which
+                                          // is a little more than 0.5 sec.
+#define RECEIVER_REST_CYCLES_MIN    50    // Number of cycles the gyro must be
+                                          // at rest to flag a stable condition
+
+//-----------------------------------------------------------------------------
+//
+// Minimum and maximum thresholds, beyond which the receiver input is considered
+// to be at minimum or maximum respectively
+
+#define RECEIVER_LOW_THRESHOLD  (1150 / RECEIVER_TICK)
+#define RECEIVER_HIGH_THRESHOLD (1850 / RECEIVER_TICK)
+
+// Multiplier used in throttle range to motor range conversion.  Intended to
+// avoid rounding errors in calculations
+
+#define THROTTLE_RANGE_FACTOR_MULTIPLIER 5
+
 
 //=============================================================================
 //
@@ -71,6 +100,8 @@ typedef struct
 } ReceiverChData;
 
 static ReceiverChData ch_data[NUM_CH];
+
+static boolean receiver_status = false;
 
 
 //=============================================================================
@@ -116,7 +147,8 @@ static void receiver_pci_handler(void     *p_usr,
 
       else
       {
-        p_ch_data->ticks_high = ticks_diff;
+        p_ch_data->ticks_high -= (p_ch_data->ticks_high >> 2);
+        p_ch_data->ticks_high += (ticks_diff >> 2);
         p_ch_data->error_count = 0;   // Only successful high resets the counter
         error_flag = false;
       }
@@ -203,6 +235,28 @@ receiver_init(void)
 }
 
 
+//======================== receiver_update_status() ===========================
+//
+// Update the current status of the receiver.  Should be called periodically.
+
+boolean                    // Ret: true if OK, false if not OK
+receiver_update_status(void)
+
+{
+  uint8_t ch;
+
+
+  receiver_status = true;
+  for (ch = FIRST_CH; ch < NUM_CH; ch++)
+  {
+    if (ch_data[ch].error_count >= RECEIVER_MAX_ERRORS)
+       receiver_status = false;
+  }
+
+  return receiver_status;
+}
+
+
 //======================== receiver_get_status() ==============================
 //
 // Get the current status of the receiver
@@ -211,17 +265,7 @@ boolean                    // Ret: true if OK, false if not OK
 receiver_get_status(void)
 
 {
-  boolean status = true;
-  uint8_t ch;
-
-
-  for (ch = FIRST_CH; ch < NUM_CH; ch++)
-  {
-    if (ch_data[ch].error_count >= RECEIVER_MAX_ERRORS)
-       status = false;
-  }
-
-  return status;
+  return receiver_status;
 }
 
 
@@ -229,7 +273,7 @@ receiver_get_status(void)
 //
 // Get the current raw receiver data (that has been read before from the h/w)
 
-uint16_t                             // Ret: raw data, in units of  RECEIVER_TICK
+uint16_t                             // Ret: raw data, in units of RECEIVER_TICK
 receiver_get_current_raw(uint8_t ch) // In:  channel
 
 {
@@ -250,6 +294,19 @@ receiver_get_current_raw(uint8_t ch) // In:  channel
   SREG = old_sreg;
 
   return data;
+}
+
+
+//========================== receiver_get_boolean() ===========================
+//
+// Get a receiver channel data in a boolean (0 or 1) format.  This is used for,
+// e.g., the Gear channel.
+
+boolean                          // Ret: boolean channel data
+receiver_get_boolean(uint8_t ch) // In:  channel
+
+{
+  return (receiver_get_current_raw(ch) > RECEIVER_NOM_MID);
 }
 
 
@@ -279,4 +336,315 @@ void receiver_print_stats(void)
   Serial.println();
 }
 #endif
+
+
+//========================== Class ReceiverRotation ===========================
+//
+// Handle rotation commands (roll, pitch, yaw): find zero point and convert to
+// signed number.
+//
+//=============================================================================
+
+//============================= Constructor ===================================
+
+ReceiverRotation::ReceiverRotation(uint8_t ch_in)     // In:  Receiver channel
+
+{
+  ch = ch_in;
+}
+
+
+//============================ init_zero() ====================================
+//
+// initialize the zero finding algorithm
+
+void ReceiverRotation::init_zero(void)
+
+{
+  cycle_counter = 0;
+  raw_zero = (uint16_t)RECEIVER_NOM_MID;
+  if (receiver_get_status())
+    raw_avg = receiver_get_current_raw(ch) << RECEIVER_LONG_AVG_FACTOR;
+  else  
+    raw_avg = (uint16_t)RECEIVER_NOM_MID << RECEIVER_LONG_AVG_FACTOR;
+}
+
+
+//=========================== find_zero() =====================================
+//
+// Calculate an average and check whether the raw receiver input is stable
+// around the zero point.  Should be called periodically.
+
+boolean                        // Ret: true if stable aroud zero
+ReceiverRotation::find_zero(void)
+
+{
+  int16_t  avg_diff;
+  int16_t  zero_diff;
+  uint16_t raw;
+
+
+  if (! receiver_get_status())
+  {
+    // Receiver is not OK
+    
+    cycle_counter = 0;
+    
+    return false;
+  };
+  
+  raw = receiver_get_current_raw(ch);
+  
+  // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
+
+  avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
+  raw_avg += avg_diff;
+
+  zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
+  
+  // To be stable, the current reading must not deviate from average too much.
+  // It also must not deviate from zero too much.
+  
+  if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
+      (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)   ||
+      (zero_diff > (int16_t)RECEIVER_REST_ZERO_DEV_MAX)  ||
+      (zero_diff < (int16_t)-RECEIVER_REST_ZERO_DEV_MAX)
+     )
+  {
+    // Not stable
+    
+    cycle_counter = 0;
+    
+    return false;
+  }
+
+  else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
+  {
+    // Stable, but not for long enough
+    
+    cycle_counter++;
+    
+    return false;
+  }
+
+  else
+  {
+    // We have been stable long enough, flag a stable condition
+    
+    raw_zero = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+
+    return true;
+  }
+}
+
+
+//=========================== get_rotation() ==================================
+//
+// Get the centered rotation value.  Should be called periodically.
+
+int16_t                        // Ret: centered data, in units of RECEIVER_TICK
+ReceiverRotation::get_rotation(void)
+
+{
+  if (receiver_get_status())
+    return receiver_get_current_raw(ch) - raw_zero;
+
+  else
+    return 0;
+}
+
+
+//========================== Class ReceiverThrottle ===========================
+//
+// Handle throttle command: find minimum and maximum
+//
+//=============================================================================
+
+//============================= Constructor ===================================
+
+ReceiverThrottle::ReceiverThrottle(void)
+
+{
+  init_stable();
+}
+
+
+//============================ init_stable() ==================================
+//
+// initialize the stable point finding algorithm
+
+void ReceiverThrottle::init_stable(void)
+
+{
+  cycle_counter = 0;
+}
+
+
+//=========================== find_stable() ===================================
+//
+// Calculate an average and check whether the raw receiver input is stable.
+// Should be called periodically.
+
+int16_t                        // Ret: stable point if stable, -1 otherwise
+ReceiverThrottle::find_stable(void)
+
+{
+  int16_t  avg_diff;
+  int16_t  zero_diff;
+  uint16_t raw;
+
+
+  if (! receiver_get_status())
+  {
+    // Receiver is not OK
+    
+    cycle_counter = 0;
+    
+    return -1;
+  };
+  
+  raw = receiver_get_current_raw(THROTTLE_CH);
+  
+  // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
+
+  avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
+  raw_avg += avg_diff;
+
+  zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
+  
+  // To be stable, the current reading must not deviate from average too much.
+  // It also must not deviate from zero too much.
+  
+  if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
+      (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)
+     )
+  {
+    // Not stable
+    
+    cycle_counter = 0;
+    
+    return -1;
+  }
+
+  else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
+  {
+    // Stable, but not for long enough
+    
+    cycle_counter++;
+    
+    return -1;
+  }
+
+  else
+  {
+    // We have been stable long enough, flag a stable condition
+    
+    return raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+  }
+}
+
+
+//=========================== find_min() ======================================
+//
+// Calculate an average and check whether the raw receiver input is stable
+// around the minimum point.  Should be called periodically.
+
+int16_t                        // Ret: stable point if stable, -1 otherwise
+ReceiverThrottle::find_min(void)
+
+{
+  int16_t raw_stable;
+
+
+  raw_stable = find_stable();
+  
+  if ((raw_stable > (int16_t)RECEIVER_LOW_THRESHOLD) || (raw_stable < 0))
+    return false;
+
+  raw_min = raw_stable;
+
+  return true;
+}
+
+
+//=========================== find_max() ======================================
+//
+// Calculate an average and check whether the raw receiver input is stable
+// around the maximum point.  Should be called periodically.
+
+int16_t                        // Ret: stable point if stable, -1 otherwise
+ReceiverThrottle::find_max(void)
+
+{
+  int16_t raw_stable;
+
+
+  raw_stable = find_stable();
+  
+  if (raw_stable < (int16_t)RECEIVER_HIGH_THRESHOLD)
+    return false;
+
+  raw_max = raw_stable;
+
+  return true;
+}
+
+
+//===================== calculate_throttle_motor_factor() =====================
+//
+// Calculate the factor used in get_throttle(), based on the detected minimum
+// and maximum values.  Should be called after find_min() and find_max() have
+// done their job.
+
+void
+ReceiverThrottle::calculate_throttle_motor_factor(void)
+
+{
+  uint16_t throttle_range;
+
+
+  throttle_range = raw_max - raw_min + 1;
+  
+  // Make sure the diff is within the nominal range
+
+  if (throttle_range > 1023)
+    throttle_range = 1023;
+  throttle_motor_range_factor =
+    (uint16_t)(throttle_range << THROTTLE_RANGE_FACTOR_MULTIPLIER) /
+                                                (uint16_t)MOTOR_THROTTLE_RANGE;
+}
+
+
+//=========================== get_throttle() ==================================
+//
+// Get the throttle value, normalized to motor command range
+
+int16_t                        // Ret: normalized data
+ReceiverThrottle::get_throttle(void)
+
+{
+  int16_t throttle_diff;
+
+  
+  if (receiver_get_status())
+  {
+    throttle_diff = receiver_get_current_raw(THROTTLE_CH)  - raw_min;
+
+    // Make sure the diff is within the nominal range
+    
+    if (throttle_diff < 0)
+      throttle_diff = 0;
+    else if (throttle_diff > 1023)
+      throttle_diff = 1023;
+  
+    return ((uint16_t)(throttle_diff << THROTTLE_RANGE_FACTOR_MULTIPLIER) / 
+                                                  throttle_motor_range_factor) +
+           (uint16_t)MOTOR_THROTTLE_MIN;
+  }
+  
+  else
+    return MOTOR_THROTTLE_MIN;
+}
+
+
 

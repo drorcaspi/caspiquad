@@ -47,9 +47,10 @@
 
 // Nominal minimum, middle and maximum values of raw receiver data
 
-#define RECEIVER_NOM_MIN (1000 / RECEIVER_TICK)
-#define RECEIVER_NOM_MID (1500 / RECEIVER_TICK)
-#define RECEIVER_NOM_MAX (2000 / RECEIVER_TICK)
+#define RECEIVER_NOM_MIN   (1000 / RECEIVER_TICK)
+#define RECEIVER_NOM_MID   (1500 / RECEIVER_TICK)
+#define RECEIVER_NOM_MAX   (2000 / RECEIVER_TICK)
+#define RECEIVER_NOM_SWING ( 500 / RECEIVER_TICK)
 
 
 //============================ receiver_init() ================================
@@ -59,6 +60,14 @@
 
 boolean             // Ret: true if OK, false if failed
 receiver_init(void);
+
+
+//======================== receiver_update_status() ===========================
+//
+// Update the current status of the receiver.  Should be called periodically.
+
+boolean                    // Ret: true if OK, false if not OK
+receiver_update_status(void);
 
 
 //======================== receiver_get_status() ==============================
@@ -84,4 +93,134 @@ receiver_get_current_raw(uint8_t ch); // In:  channel
 void receiver_print_stats(void);
 
 
+//========================== Class ReceiverRotation ===========================
+//
+// Handle rotation commands (roll, pitch, yaw): find zero point and convert to
+// signed number.
+//
+//=============================================================================
+
+class ReceiverRotation
+
+{
+private:
+  uint8_t      ch;                  // Receiver channel
+  uint16_t     raw_zero;            // Raw receiver reading at middle
+  uint16_t     raw_avg;             // Average of raw readings
+  uint8_t      cycle_counter;       // Count the number of cycles
+
+public:
+  //============================= Constructor ===================================
+
+  ReceiverRotation(uint8_t ch);     // In:  Receiver channel
+  
+  
+  //============================ init_zero() ====================================
+  //
+  // initialize the zero finding algorithm
+
+  void init_zero(void);
+
+
+  //=========================== find_zero() =====================================
+  //
+  // Calculate an average and check whether the raw receiver input is stable
+  // around the zero point.  Should be called periodically.
+  
+  boolean                        // Ret: true if stable aroud zero
+  find_zero(void);
+  
+  
+  //=========================== get_rotation() ==================================
+  //
+  // Get the centered rotation value.  Should be called periodically.
+  
+  int16_t                        // Ret: centered data, in units of RECEIVER_TICK
+  get_rotation(void);
+  
+  
+  //============================= print_stats() =================================
+  //
+  // Print some statistics (for debug)
+
+  void print_stats(void);
+};
+
+
+
+//========================== Class ReceiverThrottle ===========================
+//
+// Handle throttle command: find minimum and maximum
+//
+//=============================================================================
+
+class ReceiverThrottle
+
+{
+private:
+  uint16_t     raw_min;             // Raw receiver reading at minimum
+  uint16_t     raw_max;             // Raw receiver reading at maximum
+  uint16_t     raw_avg;             // Average of raw readings
+  uint16_t     throttle_motor_range_factor;
+                                    // Factor for scaling throttle command from
+                                    // the receiver to motor throttle command
+  uint8_t      cycle_counter;       // Count the number of cycles
+
+
+  //=========================== find_stable() ===================================
+  //
+  // Calculate an average and check whether the raw receiver input is stable.
+  // Should be called periodically.
+
+  int16_t                        // Ret: stable point if stable, -1 otherwise
+  find_stable(void);
+
+public:
+  //============================= Constructor ===================================
+
+  ReceiverThrottle(void);
+  
+  
+  //============================ init_stable() ==================================
+  //
+  // initialize the stable point finding algorithm
+  
+  void init_stable(void);
+
+  
+  //=========================== find_min() ======================================
+  //
+  // Calculate an average and check whether the raw receiver input is stable
+  // around the minimum point.  Should be called periodically.
+  
+  int16_t                        // Ret: stable point if stable, -1 otherwise
+  find_min(void);
+  
+
+  //=========================== find_max() ======================================
+  //
+  // Calculate an average and check whether the raw receiver input is stable
+  // around the maximum point.  Should be called periodically.
+
+  int16_t                        // Ret: stable point if stable, -1 otherwise
+  find_max(void);
+
+
+  //===================== calculate_throttle_motor_factor() =====================
+  //
+  // Calculate the factor used in get_throttle(), based on the detected minimum
+  // and maximum values.  Should be called after find_min() and find_max() have
+  // done their job.
+
+  void
+  calculate_throttle_motor_factor(void);
+
+
+  //=========================== get_throttle() ==================================
+  //
+  // Get the throttle value, normalized to motor command range
+
+  int16_t                        // Ret: normalized data
+  get_throttle(void);
+};
 #endif
