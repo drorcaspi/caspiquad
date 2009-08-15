@@ -22,6 +22,7 @@
 
 #define CONTROL_LOOP_CYCLE_SEC 0.02 
 #define MAX_SENSORS_SETUP_SEC  4
+#define SETUP_ARMING_SEC       1
 
 typedef enum
 
@@ -29,6 +30,18 @@ typedef enum
   FLIGHT_SETUP,
   FLIGHT_READY
 } FlightState;
+
+typedef enum
+{
+  SETUP_GYROS,
+  SETUP_RECEIVER_ROTATIONS,
+  SETUP_RECEIVER_THROTTLE_MAX,
+  SETUP_RECEIVER_THROTTLE_MIN,
+  SETUP_ARMING    
+} SetupState;
+
+#define MOTOR_THROTTLE_COMMAND_CUTOFF_THRESHOLD (MOTOR_THROTTLE_MIN + 10)
+#define RECEIVER_ROT_COMMAND_MIN_THRESHOLD      (-RECEIVER_NOM_SWING + 150)
 
 
 //=============================================================================
@@ -49,7 +62,6 @@ uint8_t           max_cycle_msec = 0;
 // Flight Control Variables
 
 FlightState       flight_state = FLIGHT_SETUP;
-uint8_t           sensors_setup_cycles = 0;
 
 Gyro              gyro[NUM_ROTATIONS];
 RotationEstimator rot_estimator[NUM_ROTATIONS];
@@ -131,8 +143,8 @@ void flight_control_write_eeprom(void)
 
 void setup()
 {
-  uint8_t  rot;
-  int      eeprom_addr;
+  uint8_t        rot;
+  int            eeprom_addr;
 
 
   analogReference(ANALOG_REFERENCE);
@@ -194,18 +206,31 @@ void setup()
 
 void loop ()
 {
-  uint32_t current_msec;
-  uint8_t  cycle_msec;
-  int8_t   accel_raw[NUM_AXIS];
-  uint16_t accel_abs_sq;
-  float    rotation_raw[NUM_ROTATIONS];
-  float    pitch_estimate;                  // (rad)
-  float    roll_estimate;                   // (rad)
-  int16_t  temp_receiver_raw;
-  float    rot_error[NUM_ROTATIONS];        // (rad)
-  float    rot_rate_error[NUM_ROTATIONS];   // (rad/sec)
-  uint8_t  rot;
-  boolean  receiver_ok;
+  // Static Local Variables
+  
+  static uint8_t          setup_cycles                = 0;
+  static SetupState       setup_state                 = SETUP_GYROS;
+  static ReceiverRotation receiver_rot[NUM_ROTATIONS] = {
+                                                          ReceiverRotation(ROLL_CH),
+                                                          ReceiverRotation(PITCH_CH),
+                                                          ReceiverRotation(YAW_CH)
+                                                        };
+  static ReceiverThrottle receiver_throttle;
+
+  // Local Variables
+  
+  uint32_t       current_msec;
+  uint8_t        cycle_msec;
+  int8_t         accel_raw[NUM_AXIS];
+  uint16_t       accel_abs_sq;
+  float          rotation_raw[NUM_ROTATIONS];
+  float          pitch_estimate;                  // (rad)
+  float          roll_estimate;                   // (rad)
+  int16_t        temp_receiver_raw;
+  float          rot_error[NUM_ROTATIONS];        // (rad)
+  float          rot_rate_error[NUM_ROTATIONS];   // (rad/sec)
+  uint8_t        rot;                             // Rotation index
+  boolean        receiver_ok;
   
 
   //------------------------------
@@ -243,6 +268,8 @@ void loop ()
   //-------------------------------- 
   // Now do the flight control work
   //--------------------------------
+
+  receiver_update_status();
 
   // Read the accelerometers and calculate raw rotations
   
@@ -282,49 +309,163 @@ void loop ()
 
   if (flight_state == FLIGHT_SETUP)
   {
-    //-----------------
+    //-------------------------------------------------------------------------
     // Setup Phase
-    //-----------------
+    // ===========
+    //
+    // Setup sequence is as follows:
+    // 1. Wait for the gyros to stabilize
+    // 2. Wait for the receiver to stabilize (roll, pitch, yaw at 0, throttle
+    //    at minimum)
+    // 3. Wait for throttle at maximum for 1/2 second
+    // 4. Wait for throttle at minimum for 1/2 second
+    // 5. Indicate "Arming"
+    // 6. Start flight mode
+    //-------------------------------------------------------------------------
 
-    if (gyro[PITCH].is_stable() &&
-        gyro[ROLL].is_stable()  &&
-        gyro[YAW].is_stable())
+    switch (setup_state)
     {
-      gyro[PITCH].zero();
-      gyro[ROLL].zero();
-      gyro[YAW].zero();
-      
-      flight_state = FLIGHT_READY;
-      Indicator::indicate(Indicator::FLIGHT);  // TODO: indicate warning first!
-      
-      motors_enable();
+      case SETUP_GYROS:
+        // Wait until all the gyros are stable.  If this lasts more than
+        // MAX_SENSORS_SETUP_SEC, indicate an error but continue waiting
+        
+        if (gyro[PITCH].is_stable() &&
+            gyro[ROLL].is_stable()  &&
+            gyro[YAW].is_stable())
+        {
+          gyro[PITCH].zero();
+          gyro[ROLL].zero();
+          gyro[YAW].zero();
+
+          Indicator::indicate(Indicator::SETUP_NEXT);
+          setup_cycles = 0;
+          setup_state = SETUP_RECEIVER_ROTATIONS;
+          
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            receiver_rot[rot].init_zero();
+          };
+          receiver_throttle.init_stable();
+        }
+        
+        else if (setup_cycles <= (uint8_t)(MAX_SENSORS_SETUP_SEC / CONTROL_LOOP_CYCLE_SEC))
+          setup_cycles++;
+        
+        else
+        {
+          setup_cycles = 0;
+          Indicator::indicate(Indicator::SETUP_ERR);
+        };
+
+        break;
+
+      case SETUP_RECEIVER_ROTATIONS:
+        // Wait until the 3 rototations are stable at 0, throttle stable at
+        // minimum.  No wait timeout since it depends on the operator.
+
+        if (receiver_rot[PITCH].find_zero() &&
+            receiver_rot[ROLL].find_zero()  &&
+            receiver_rot[YAW].find_zero() &&
+            receiver_throttle.find_min())
+        {
+
+          Indicator::indicate(Indicator::SETUP_NEXT);
+          setup_state = SETUP_RECEIVER_THROTTLE_MAX;
+
+          receiver_throttle.init_stable();
+        };
+
+        break;
+
+      case SETUP_RECEIVER_THROTTLE_MAX:
+        // Wait until the the throttle stable at maximum.
+        // No wait timeout since it depends on the operator.
+
+        if (receiver_throttle.find_max())
+        {
+
+          Indicator::indicate(Indicator::SETUP_NEXT);
+          setup_state = SETUP_RECEIVER_THROTTLE_MIN;
+
+          receiver_throttle.init_stable();
+        };
+
+        break;
+
+      case SETUP_RECEIVER_THROTTLE_MIN:
+        // Wait until the the throttle stable at minimum.
+        // No wait timeout since it depends on the operator.
+
+        if (receiver_throttle.find_min())
+        {
+          // Now we have the minimum and maximum, we can calculate the range factor
+          
+          receiver_throttle.calculate_throttle_motor_factor();
+          
+          Indicator::indicate(Indicator::ARMING);
+          setup_state = SETUP_ARMING;
+        };
+
+        break;
+
+      case SETUP_ARMING:
+        // Indicate that the motors are being enabled.
+
+        if (setup_cycles <= (uint8_t)(SETUP_ARMING_SEC / CONTROL_LOOP_CYCLE_SEC))
+          setup_cycles++;
+        
+        else
+        {
+          flight_state = FLIGHT_READY;
+          Indicator::indicate(Indicator::FLIGHT);
+          motors_enable();
+        };
+        
+        break;
+
+      default:
+        Indicator::indicate(Indicator::SW_ERR);
     }
-
-    else if (sensors_setup_cycles <= (uint8_t)(MAX_SENSORS_SETUP_SEC / CONTROL_LOOP_CYCLE_SEC))
-      sensors_setup_cycles++;
-
-    else
-    {
-      sensors_setup_cycles = 0;
-      Indicator::indicate(Indicator::SETUP_ERR);
-    };
   }
     
-
   else
   {
-    //-----------------
+    //-------------------------------------------------------------------------
     // Flight Phase
-    //-----------------
+    //-------------------------------------------------------------------------
 
+    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+    {
+      // Read rotation command and calculate error
+      
+      rot_rate_error[rot] = 
+        ((float)receiver_rot[rot].get_rotation() * receiver_rot_rate_gain) -
+        gyro[rot].get_smoothed_rad_per_sec();
+
+#if PRINT_RECEIVER_ROT
+      Serial.print(rot_rate_error[rot]);
+      Serial.print("\t");
+#endif
+
+      motor_rot_command[rot] = rot_rate_pid[rot].update(rot_rate_error[rot]);
+
+#if PRINT_MOTOR_ROT_COMMAND           
+      Serial.print(motor_rot_command[rot]);
+      Serial.print("\t");
+#endif
+    };
+
+#if PRINT_MOTOR_ROT_COMMAND || PRINT_RECEIVER_ROT
+    Serial.println();
+#endif
+    
+
+#if 0      
     receiver_ok = receiver_get_status();
     temp_receiver_raw = 0;   // Default value in case receiver is not OK
-
-    // Read pitch command and calculate error
-    
+      
     if (receiver_ok)
-      temp_receiver_raw = (int16_t)(receiver_get_current_raw(PITCH_CH) -
-                                    (uint16_t)RECEIVER_NOM_MID);
+      temp_receiver_raw = receiver_rot[PITCH].get_rotation();
 
     if ((temp_receiver_raw > (int16_t)receiver_rot_limit)  ||
         (temp_receiver_raw < (int16_t)-receiver_rot_limit))
@@ -348,8 +489,7 @@ void loop ()
     // Read roll command and calculate error
       
     if (receiver_ok)
-      temp_receiver_raw = (int16_t)(receiver_get_current_raw(ROLL_CH) -
-                                    (uint16_t)RECEIVER_NOM_MID);
+      temp_receiver_raw = receiver_rot[ROLL].get_rotation();
 
     if ((temp_receiver_raw > (int16_t)receiver_rot_limit)  ||
         (temp_receiver_raw < (int16_t)-receiver_rot_limit))
@@ -373,8 +513,7 @@ void loop ()
     // Read yaw command and calculate error
         
     if (receiver_ok)
-      temp_receiver_raw = (int16_t)(receiver_get_current_raw(YAW_CH) -
-                                    (uint16_t)RECEIVER_NOM_MID);
+      temp_receiver_raw = receiver_rot[YAW].get_rotation();
 
     // Target is yaw rate
     
@@ -393,7 +532,8 @@ void loop ()
     Serial.println();
 #endif
 
-    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+    //for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS - 1; rot++)
     {
 #if PRINT_PID
       Serial.print(rot, DEC);
@@ -405,6 +545,7 @@ void loop ()
       Serial.println();
 #endif
     };
+    motor_rot_command[YAW] = rot_rate_pid[YAW].update(rot_rate_error[YAW]);
 
 #if PRINT_MOTOR_ROT_COMMAND           
     Serial.print(motor_rot_command[PITCH]);
@@ -414,24 +555,33 @@ void loop ()
     Serial.print(motor_rot_command[YAW]);
     Serial.println("\t");
 #endif
+#endif
 
 #if PRINT_RECEIVER
     receiver_print_stats();
 #endif
 
-    if (receiver_get_status())
-      motor_throttle_command =
-                     ((receiver_get_current_raw(THROTTLE_CH)  - RECEIVER_NOM_MIN) /
-                     ((RECEIVER_NOM_MAX - RECEIVER_NOM_MIN) / MOTOR_THROTTLE_RANGE)) +
-                     MOTOR_THROTTLE_MIN;
+    motor_throttle_command = receiver_throttle.get_throttle(void);
+
+    if ((motor_throttle_command < (int16_t)MOTOR_THROTTLE_COMMAND_CUTOFF_THRESHOLD) &&
+        (receiver_rot[YAW].get_rotation < (int16_t)RECEIVER_ROT_COMMAND_MIN_THRESHOLD))
+    {
+      // TODO:  Same if Gyros are stable but only after flight.
+      // Minimum throttle + yaw stick left indicates stop.  Kill the motors and
+      // return to the setup phase.
+
+      motors_disable();
+      flight_state = FLIGHT_SETUP;
+      setup_state = SETUP_GYROS;
+      Indicator::indicate(Indicator::SETUP);
+    }
+
     else
-      motor_throttle_command = MOTOR_THROTTLE_MIN;
-    
-    motors_command(motor_throttle_command,
-                   motor_rot_command[PITCH],
-                   motor_rot_command[ROLL],
-                   motor_rot_command[YAW]);
-  } 
+      motors_command(motor_throttle_command,
+                     motor_rot_command[PITCH],
+                     motor_rot_command[ROLL],
+                     motor_rot_command[YAW]);
+  };
   
 #if PRINT_MOTOR_COMMAND
   motors_print_stats();
