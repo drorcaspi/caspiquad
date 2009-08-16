@@ -40,8 +40,7 @@ typedef enum
   SETUP_ARMING    
 } SetupState;
 
-#define MOTOR_THROTTLE_COMMAND_CUTOFF_THRESHOLD (MOTOR_THROTTLE_MIN + 10)
-#define RECEIVER_ROT_COMMAND_MIN_THRESHOLD      (-RECEIVER_NOM_SWING + 150)
+//#define MOTOR_THROTTLE_COMMAND_CUTOFF_THRESHOLD (MOTOR_THROTTLE_MIN + 10)
 
 
 //=============================================================================
@@ -84,6 +83,17 @@ uint16_t          receiver_rot_limit     = 100;
                     // limit from the center, the quad is stabilized for
                     // rotation.  Beyond this, it is stabilized for rotation
                     // rate.
+
+// Objects for processing receiver inputs
+
+ReceiverRotation receiver_rot[NUM_ROTATIONS] = {
+                                                 ReceiverRotation(ROLL_CH),
+                                                 ReceiverRotation(PITCH_CH),
+                                                 ReceiverRotation(YAW_CH)
+                                               };
+ReceiverThrottle receiver_throttle;
+
+// Calculated motor commands
 
 int16_t           motor_throttle_command;
 int16_t           motor_rot_command[NUM_ROTATIONS];
@@ -204,18 +214,12 @@ void setup()
 //
 //=============================================================================
 
-void loop ()
+void loop()
 {
   // Static Local Variables
   
   static uint8_t          setup_cycles                = 0;
   static SetupState       setup_state                 = SETUP_GYROS;
-  static ReceiverRotation receiver_rot[NUM_ROTATIONS] = {
-                                                          ReceiverRotation(ROLL_CH),
-                                                          ReceiverRotation(PITCH_CH),
-                                                          ReceiverRotation(YAW_CH)
-                                                        };
-  static ReceiverThrottle receiver_throttle;
 
   // Local Variables
   
@@ -233,9 +237,9 @@ void loop ()
   boolean        receiver_ok;
   
 
-  //------------------------------
+  //---------------------------------------------------------------------------
   // Wait for start of next cycle
-  //------------------------------
+  //---------------------------------------------------------------------------
   
   current_msec = millis();
   cycle_msec = (uint8_t)(current_msec- last_msec);
@@ -265,9 +269,9 @@ void loop ()
   Serial.println(avg_cycle_msec >> 8, DEC);
 #endif
 
-  //-------------------------------- 
+  //---------------------------------------------------------------------------
   // Now do the flight control work
-  //--------------------------------
+  //---------------------------------------------------------------------------
 
   receiver_update_status();
 
@@ -307,7 +311,20 @@ void loop ()
   rot_estimator[ROLL].print_stats();
 #endif
 
-  if (flight_state == FLIGHT_SETUP)
+  if ((receiver_is_at_extreme(THROTTLE_CH) == -1) &&
+      (receiver_is_at_extreme(YAW_CH) == -1))
+  {
+    // TODO:  Same if Gyros are stable but only after flight.
+    // Minimum throttle + yaw stick left indicates immediate stop.
+    // Kill the motors and return to the setup phase.
+  
+    motors_disable();
+    flight_state = FLIGHT_SETUP;
+    setup_state = SETUP_GYROS;
+    Indicator::indicate(Indicator::SETUP);
+  }
+
+  else if (flight_state == FLIGHT_SETUP)
   {
     //-------------------------------------------------------------------------
     // Setup Phase
@@ -561,35 +578,21 @@ void loop ()
     receiver_print_stats();
 #endif
 
-    motor_throttle_command = receiver_throttle.get_throttle(void);
+    motor_throttle_command = receiver_throttle.get_throttle();
 
-    if ((motor_throttle_command < (int16_t)MOTOR_THROTTLE_COMMAND_CUTOFF_THRESHOLD) &&
-        (receiver_rot[YAW].get_rotation < (int16_t)RECEIVER_ROT_COMMAND_MIN_THRESHOLD))
-    {
-      // TODO:  Same if Gyros are stable but only after flight.
-      // Minimum throttle + yaw stick left indicates stop.  Kill the motors and
-      // return to the setup phase.
-
-      motors_disable();
-      flight_state = FLIGHT_SETUP;
-      setup_state = SETUP_GYROS;
-      Indicator::indicate(Indicator::SETUP);
-    }
-
-    else
-      motors_command(motor_throttle_command,
-                     motor_rot_command[PITCH],
-                     motor_rot_command[ROLL],
-                     motor_rot_command[YAW]);
+    motors_command(motor_throttle_command,
+                   motor_rot_command[PITCH],
+                   motor_rot_command[ROLL],
+                   motor_rot_command[YAW]);
   };
   
 #if PRINT_MOTOR_COMMAND
   motors_print_stats();
 #endif
 
-  //-----------
+  //---------------------------------------------------------------------------
   // Telemetry
-  //-----------
+  //---------------------------------------------------------------------------
   
 #if SUPPORT_TELEMENTRY 
   // Check for a new serial command

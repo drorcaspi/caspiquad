@@ -36,7 +36,6 @@
 //
 //=============================================================================
 
-
 // Absolute minimum and maximum values of raw receiver data.
 // Beyond them the receiver is considered to be non-functional.
 
@@ -310,6 +309,37 @@ receiver_get_boolean(uint8_t ch) // In:  channel
 }
 
 
+//======================== receiver_is_at_extreme() ===========================
+//
+// Get a receiver channel data in a boolean (0 or 1) format.  This is used for,
+// e.g., the Gear channel.
+
+int8_t                             // Ret: -1 if near minimum, 1 if near
+                                   //      maximum, 0 otherwise
+receiver_is_at_extreme(uint8_t ch) // In:  channel
+
+{
+  uint16_t raw;
+  uint8_t  result;
+
+  
+  result = 0;
+  
+  if (receiver_get_status())
+  {
+    raw = receiver_get_current_raw(ch);
+    
+    if (raw > RECEIVER_HIGH_THRESHOLD)
+      result = 1;
+    
+    else if (raw < RECEIVER_LOW_THRESHOLD)
+      result = -1;
+  }
+
+  return result;
+}
+
+
 #if PRINT_RECEIVER
 //========================== receiver_print_stats() ===========================
 //
@@ -358,7 +388,8 @@ ReceiverRotation::ReceiverRotation(uint8_t ch_in)     // In:  Receiver channel
 //
 // initialize the zero finding algorithm
 
-void ReceiverRotation::init_zero(void)
+void 
+ReceiverRotation::init_zero(void)
 
 {
   cycle_counter = 0;
@@ -434,7 +465,7 @@ ReceiverRotation::find_zero(void)
     raw_zero = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
 
     return true;
-  }
+  };
 }
 
 
@@ -473,7 +504,8 @@ ReceiverThrottle::ReceiverThrottle(void)
 //
 // initialize the stable point finding algorithm
 
-void ReceiverThrottle::init_stable(void)
+void
+ReceiverThrottle::init_stable(void)
 
 {
   cycle_counter = 0;
@@ -540,7 +572,7 @@ ReceiverThrottle::find_stable(void)
     // We have been stable long enough, flag a stable condition
     
     return raw_avg >> RECEIVER_LONG_AVG_FACTOR;
-  }
+  };
 }
 
 
@@ -645,6 +677,5 @@ ReceiverThrottle::get_throttle(void)
   else
     return MOTOR_THROTTLE_MIN;
 }
-
 
 

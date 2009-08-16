@@ -86,6 +86,25 @@ uint16_t                              // Ret: raw data, in units of RECEIVER_TIC
 receiver_get_current_raw(uint8_t ch); // In:  channel
 
 
+//========================== receiver_get_boolean() ===========================
+//
+// Get a receiver channel data in a boolean (0 or 1) format.  This is used for,
+// e.g., the Gear channel.
+
+boolean                           // Ret: boolean channel data
+receiver_get_boolean(uint8_t ch); // In:  channel
+
+
+//======================== receiver_is_at_extreme() ===========================
+//
+// Get a receiver channel data in a boolean (0 or 1) format.  This is used for,
+// e.g., the Gear channel.
+
+int8_t                              // Ret: -1 if near minimum, 1 if near
+                                    //      maximum, 0 otherwise
+receiver_is_at_extreme(uint8_t ch); // In:  channel
+
+
 //========================== receiver_print_stats() ===========================
 //
 // Print some statistics (for debug)
@@ -112,6 +131,7 @@ private:
 public:
   //============================= Constructor ===================================
 
+  ReceiverRotation(void) {};
   ReceiverRotation(uint8_t ch);     // In:  Receiver channel
   
   
