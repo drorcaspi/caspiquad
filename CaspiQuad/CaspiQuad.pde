@@ -9,7 +9,7 @@
 #include "receiver.h"
 #include "pid.h"
 #include "rotation_estimator.h"
-#include "indicator.h"
+#include "indicators.h"
 #include "serial_telemetry.h"
 #include "eeprom_utils.h"
 
@@ -25,7 +25,6 @@
 #define SETUP_ARMING_SEC       1
 
 typedef enum
-
 {
   FLIGHT_SETUP,
   FLIGHT_READY
@@ -39,8 +38,6 @@ typedef enum
   SETUP_RECEIVER_THROTTLE_MIN,
   SETUP_ARMING    
 } SetupState;
-
-//#define MOTOR_THROTTLE_COMMAND_CUTOFF_THRESHOLD (MOTOR_THROTTLE_MIN + 10)
 
 
 //=============================================================================
@@ -69,8 +66,6 @@ PID               rot_rate_pid[NUM_ROTATIONS];
 PID               rot_pid[NUM_ROTATIONS];
 
 float             rot_correction[NUM_ROTATIONS];   // (rad/sec)
-
-//float             gyro_rad_per_sec[NUM_ROTATIONS];
 
 float             receiver_rot_rate_gain = 0.002;  // (rad/sec)
                     // Multiplies the receiver rotation command (cenetered)
@@ -160,7 +155,7 @@ void setup()
   analogReference(ANALOG_REFERENCE);
   Serial.begin(115200);
 
-  Indicator::init();
+  indicators_init();
   eeprom_init();
   motors_init();
   accel_init();
@@ -203,7 +198,7 @@ void setup()
                                            3.0);  // windup_guard (rad/sec)
   };
 
-  Indicator::indicate(Indicator::SETUP);
+  indicators_set(IND_SETUP);
   last_msec = millis();
 }
 
@@ -245,7 +240,7 @@ void loop()
   cycle_msec = (uint8_t)(current_msec- last_msec);
   
   if (cycle_msec > (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
-    Indicator::indicate(Indicator::SW_WARN);
+    indicators_set(IND_SW_WARN);
 
   if (cycle_msec > max_cycle_msec)
     max_cycle_msec = cycle_msec;
@@ -321,7 +316,7 @@ void loop()
     motors_disable();
     flight_state = FLIGHT_SETUP;
     setup_state = SETUP_GYROS;
-    Indicator::indicate(Indicator::SETUP);
+    indicators_set(IND_SETUP);
   }
 
   else if (flight_state == FLIGHT_SETUP)
@@ -354,7 +349,7 @@ void loop()
           gyro[ROLL].zero();
           gyro[YAW].zero();
 
-          Indicator::indicate(Indicator::SETUP_NEXT);
+          indicators_set(IND_SETUP_NEXT);
           setup_cycles = 0;
           setup_state = SETUP_RECEIVER_ROTATIONS;
           
@@ -371,7 +366,7 @@ void loop()
         else
         {
           setup_cycles = 0;
-          Indicator::indicate(Indicator::SETUP_ERR);
+          indicators_set(IND_SETUP_ERR);
         };
 
         break;
@@ -386,7 +381,7 @@ void loop()
             receiver_throttle.find_min())
         {
 
-          Indicator::indicate(Indicator::SETUP_NEXT);
+          indicators_set(IND_SETUP_NEXT);
           setup_state = SETUP_RECEIVER_THROTTLE_MAX;
 
           receiver_throttle.init_stable();
@@ -401,7 +396,7 @@ void loop()
         if (receiver_throttle.find_max())
         {
 
-          Indicator::indicate(Indicator::SETUP_NEXT);
+          indicators_set(IND_SETUP_NEXT);
           setup_state = SETUP_RECEIVER_THROTTLE_MIN;
 
           receiver_throttle.init_stable();
@@ -419,7 +414,7 @@ void loop()
           
           receiver_throttle.calculate_throttle_motor_factor();
           
-          Indicator::indicate(Indicator::ARMING);
+          indicators_set(IND_ARMING);
           setup_state = SETUP_ARMING;
         };
 
@@ -434,14 +429,14 @@ void loop()
         else
         {
           flight_state = FLIGHT_READY;
-          Indicator::indicate(Indicator::FLIGHT);
+          indicators_set(IND_FLIGHT);
           motors_enable();
         };
         
         break;
 
       default:
-        Indicator::indicate(Indicator::SW_ERR);
+        indicators_set(IND_SW_ERR);
     }
   }
     
@@ -611,5 +606,5 @@ void loop()
   }
 #endif
 
-  Indicator::update();
+  indicators_update();
 }
