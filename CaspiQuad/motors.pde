@@ -35,8 +35,9 @@
 //
 //=============================================================================
 
-#define MOTOR_THROTTLE_IDLE       (MOTOR_THROTTLE_MIN  + 10)
-#define MOTOR_THROTTLE_IDLE_RANGE 10
+#define MOTOR_THROTTLE_IDLE       (MOTOR_THROTTLE_MIN  +            \
+                                   (10 << MOTOR_THROTTLE_FACTOR))
+#define MOTOR_THROTTLE_IDLE_RANGE (10 << MOTOR_THROTTLE_FACTOR)
 
 
 //=============================================================================
@@ -47,7 +48,7 @@
 
 // Current motor commands
 
-static uint8_t motors_current_commands[NUM_DIRECTIONS] = {MOTOR_THROTTLE_MIN};
+static uint8_t motors_current_commands[NUM_DIRECTIONS] = {MOTOR_COMMAND_MIN};
 
 // Global motors enable flag
 
@@ -116,12 +117,12 @@ motors_command(
     // Set motor commands and averages to the minimum
     
     for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
-      motors_current_commands[dir] = (int16_t)MOTOR_THROTTLE_MIN;
+      motors_current_commands[dir] = (uint8_t)MOTOR_COMMAND_MIN;
   }
   
   else
   {
-    // Limit the inputs to legal values
+    // Limit the inputs to their legal values
     
     if (throttle < (int16_t)MOTOR_THROTTLE_IDLE)
     {
@@ -148,20 +149,29 @@ motors_command(
                            -throttle_limit / 2,
                            throttle_limit / 2);
       
-    // Calculate motor commands
+    // Calculate motor commands.
+    // Note the scaling down to command range (shift by MOTOR_THROTTLE_FACTOR) is
+    // done only after the summing of trottle and rotations.  This reduces the
+    // roundoff errors.
+
+    throttle_limit >>= MOTOR_THROTTLE_FACTOR;
     
-    motors_current_commands[FRONT] = constrain(throttle + pitch_rate + yaw_rate,
-                                               (int16_t)MOTOR_THROTTLE_MIN,
-                                               throttle_limit);
-    motors_current_commands[REAR ] = constrain(throttle - pitch_rate + yaw_rate,
-                                               (int16_t)MOTOR_THROTTLE_MIN,
-                                               throttle_limit);
-    motors_current_commands[RIGHT] = constrain(throttle + roll_rate  - yaw_rate,
-                                               (int16_t)MOTOR_THROTTLE_MIN,
-                                               throttle_limit);
-    motors_current_commands[LEFT ] = constrain(throttle - roll_rate  - yaw_rate,
-                                               (int16_t)MOTOR_THROTTLE_MIN,
-                                               throttle_limit);
+    motors_current_commands[FRONT] =
+      constrain((int16_t)(throttle + pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
+                (int16_t)MOTOR_COMMAND_MIN,
+                throttle_limit);
+    motors_current_commands[REAR ] =
+      constrain((int16_t)(throttle - pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
+                (int16_t)MOTOR_COMMAND_MIN,
+                throttle_limit);
+    motors_current_commands[RIGHT] =
+      constrain((int16_t)(throttle + roll_rate  - yaw_rate) >> MOTOR_THROTTLE_FACTOR,
+                (int16_t)MOTOR_COMMAND_MIN,
+                throttle_limit);
+    motors_current_commands[LEFT ] =
+      constrain((int16_t)(throttle - roll_rate  - yaw_rate) >> MOTOR_THROTTLE_FACTOR,
+                (int16_t)MOTOR_COMMAND_MIN,
+                throttle_limit);
   };
 
   // Now send the commands to the motors

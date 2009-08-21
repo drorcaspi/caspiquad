@@ -76,10 +76,11 @@
 #define RECEIVER_LOW_THRESHOLD  (1150 / RECEIVER_TICK)
 #define RECEIVER_HIGH_THRESHOLD (1850 / RECEIVER_TICK)
 
-// Multiplier used in throttle range to motor range conversion.  Intended to
-// avoid rounding errors in calculations
+// Range and factor used in throttle range to motor range conversion.
+// Intended to avoid rounding errors in calculations
 
-#define THROTTLE_RANGE_FACTOR_MULTIPLIER 5
+#define RECEIVER_THROTTLE_RANGE_MAX    1023  // 2^10 - 1
+#define RECEIVER_THROTTLE_RANGE_FACTOR    6  // Shift of 6, still fits in uint16_t
 
 
 //=============================================================================
@@ -639,10 +640,10 @@ ReceiverThrottle::calculate_throttle_motor_factor(void)
   
   // Make sure the diff is within the nominal range
 
-  if (throttle_range > 1023)
-    throttle_range = 1023;
+  if (throttle_range > (uint16_t)RECEIVER_THROTTLE_RANGE_MAX)
+    throttle_range = RECEIVER_THROTTLE_RANGE_MAX;
   throttle_motor_range_factor =
-    (uint16_t)(throttle_range << THROTTLE_RANGE_FACTOR_MULTIPLIER) /
+    (uint16_t)(throttle_range << RECEIVER_THROTTLE_RANGE_FACTOR) /
                                                 (uint16_t)MOTOR_THROTTLE_RANGE;
 }
 
@@ -666,11 +667,11 @@ ReceiverThrottle::get_throttle(void)
     
     if (throttle_diff < 0)
       throttle_diff = 0;
-    else if (throttle_diff > 1023)
-      throttle_diff = 1023;
+    else if (throttle_diff > (int16_t)RECEIVER_THROTTLE_RANGE_MAX)
+      throttle_diff = RECEIVER_THROTTLE_RANGE_MAX;
   
-    return ((uint16_t)(throttle_diff << THROTTLE_RANGE_FACTOR_MULTIPLIER) / 
-                                                  throttle_motor_range_factor) +
+    return ((uint16_t)((uint16_t)throttle_diff << RECEIVER_THROTTLE_RANGE_FACTOR) / 
+                                                        throttle_motor_range_factor) +
            (uint16_t)MOTOR_THROTTLE_MIN;
   }
   
