@@ -48,6 +48,7 @@
 #define PRINT_MOTOR_ROT_COMMAND   0
 #define PRINT_PID                 0
 #define PRINT_MOTOR_COMMAND       0
+#define PRINT_BAT_SENSOR          0
 #define SUPPORT_TELEMENTRY        1
 
 

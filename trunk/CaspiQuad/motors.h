@@ -31,16 +31,9 @@
 #define MOTORS_PWM_FREQ_HZ    488
 #define MOTORS_PWM_CYCLE_USEC (1000000 / MOTORS_PWM_FREQ_HZ)
 
-// Maximum, minimum and range values of motor command, used as AnalogWrite()
-// parameter
-
-#define MOTOR_COMMAND_MAX   255
-#define MOTOR_COMMAND_MIN   0
-#define MOTOR_COMMAND_RANGE (MOTOR_COMMAND_MAX - MOTOR_COMMAND_MIN + 1)
-
 //-----------------------------------------------------------------------------
 //
-// Motor Input Ranges
+// Motor Control Ranges
 //
 //-----------------------------------------------------------------------------
 
@@ -50,13 +43,21 @@
 #define MOTORS_PW_MIN_USEC     800
 #define MOTORS_PW_RANGE_USEC  (MOTORS_PW_MAX_USEC - MOTORS_PW_MIN_USEC + 1)
 
-// Maximum, minimum and range values of throttle input
+// Maximum, minimum and range values of motor command, used as AnalogWrite()
+// parameter.  In brushless mode, AnalogWrite() controls the ESCs, with pulse
+// width range as defined above
 
-// In brushless mode, AnalogWrite() controls the ESCs, with pulse width range
-// as defined above
+#define MOTOR_COMMAND_RANGE   256
+#define MOTOR_COMMAND_MAX     ((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
+#define MOTOR_COMMAND_MIN     ((uint32_t)((uint32_t)MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
 
-#define MOTOR_THROTTLE_MAX    ((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
-#define MOTOR_THROTTLE_MIN    ((uint32_t)((uint32_t)MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
+// Maximum, minimum and range values of throttle input to motors_command().
+// A shift factor of 2 (multiply by 4) is used to reduce rounding errors,
+// since actual motor command is calculated by adding 4 variable.
+
+#define MOTOR_THROTTLE_FACTOR 2
+#define MOTOR_THROTTLE_MAX    (MOTOR_COMMAND_MAX << MOTOR_THROTTLE_FACTOR)
+#define MOTOR_THROTTLE_MIN    (MOTOR_COMMAND_MIN << MOTOR_THROTTLE_FACTOR)
 #define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_MAX - MOTOR_THROTTLE_MIN + 1)
 
 // Maximum, minimum and range values of rotation (pitch, roll, yaw) rate input

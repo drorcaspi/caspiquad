@@ -127,12 +127,12 @@ static const uint8_t        flight_led_pattern[]      = {
                                                           50, 50,
                                                           PATTERN_END
                                                         };
-static const uint8_t        bat_warning_led_pattern[] = {
+static const uint8_t        bat_warn_led_pattern[]    = {
                                                           PATTERN_REPEAT,
                                                           25, 25,
                                                           PATTERN_END
                                                         };
-static const uint8_t        bat_empty_led_pattern[]   = {
+static const uint8_t        bat_low_led_pattern[]     = {
                                                           PATTERN_REPEAT,
                                                           5, 15,
                                                           PATTERN_END
@@ -163,8 +163,8 @@ static const uint8_t *const p_led_patterns[] = {
                                                  setup_err_led_pattern,
                                                  arming_led_pattern,
                                                  flight_led_pattern,
-                                                 bat_warning_led_pattern,
-                                                 bat_empty_led_pattern,
+                                                 bat_warn_led_pattern,
+                                                 bat_low_led_pattern,
                                                  hw_err_led_pattern,
                                                  sw_warn_led_pattern,
                                                  sw_err_led_pattern
@@ -203,12 +203,12 @@ static const uint8_t        arming_buz_pattern[]      = {
                                                           PATTERN_END
                                                         };
 static const uint8_t        flight_buz_pattern[]      = {PATTERN_END};
-static const uint8_t        bat_warning_buz_pattern[] = {
+static const uint8_t        bat_warn_buz_pattern[]    = {
                                                           PATTERN_REPEAT,
                                                           5, 45,
                                                           PATTERN_END
                                                         };
-static const uint8_t        bat_empty_buz_pattern[]   = {
+static const uint8_t        bat_low_buz_pattern[]     = {
                                                           PATTERN_REPEAT,
                                                           5, 15,
                                                           PATTERN_END
@@ -239,8 +239,8 @@ static const uint8_t *const p_buz_patterns[] = {
                                                  setup_err_buz_pattern,
                                                  arming_buz_pattern,
                                                  flight_buz_pattern,
-                                                 bat_warning_buz_pattern,
-                                                 bat_empty_buz_pattern,
+                                                 bat_warn_buz_pattern,
+                                                 bat_low_buz_pattern,
                                                  hw_err_buz_pattern,
                                                  sw_warn_buz_pattern,
                                                  sw_err_buz_pattern

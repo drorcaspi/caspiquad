@@ -44,7 +44,7 @@ typedef enum
   IND_ARMING,      // Warning - arming motors
   IND_FLIGHT,      // Everything ready & armed, motors running
   IND_BAT_WARN,    // Battery warning
-  IND_BAT_EMPTY,   // Battery empty
+  IND_BAT_LOW,     // Battery empty
   IND_HW_ERR,      // Hardware error, e.g., can't read accelerometers 
   IND_SW_WARN,     // Software warning (e.g., didn't complete main cycle on time)
   IND_SW_ERR       // Software error
