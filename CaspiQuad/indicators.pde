@@ -175,12 +175,16 @@ static const uint8_t *const p_led_patterns[] = {
 //-----------------
 
 static const uint8_t        none_buz_pattern[]        = {PATTERN_END};
+#if SETUP_BUZ
 static const uint8_t        setup_buz_pattern[]       = {
                                                           PATTERN_REPEAT,
                                                           5, 5,
                                                           5, 35,
                                                           PATTERN_END
                                                         };
+#else
+static const uint8_t        setup_buz_pattern[]       = {PATTERN_END};
+#endif
 static const uint8_t        setup_next_buz_pattern[]  = {
                                                           PATTERN_ONCE,
                                                           5, 5,
