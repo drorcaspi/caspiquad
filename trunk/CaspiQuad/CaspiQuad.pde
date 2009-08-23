@@ -23,7 +23,7 @@
 
 #define CONTROL_LOOP_CYCLE_SEC 0.02 
 #define MAX_SENSORS_SETUP_SEC  4
-#define SETUP_ARMING_SEC       1
+#define SETUP_ARMING_SEC       2
 
 // Main Flight State
 
@@ -276,6 +276,23 @@ void loop()
   // Now do the flight control work
   //---------------------------------------------------------------------------
 
+#if PRINT_STATE
+  {
+    static FlightState last_flight_state = (FlightState)-1;
+    static SetupState  last_setup_state  = (SetupState)-1;
+    
+    if ((flight_state != last_flight_state) || (setup_state != last_setup_state))
+    {
+      Serial.print((int)flight_state, DEC);
+      Serial.print("\t");
+      Serial.println((int)setup_state, DEC);
+
+      last_flight_state = flight_state;
+      last_setup_state = setup_state;
+    };
+  }
+#endif
+
   indicators_update();
 
   // Get the battery status and indicate
@@ -355,7 +372,7 @@ void loop()
     // 6. Start flight mode
     //-------------------------------------------------------------------------
 
-    if (bat_status != BAT_LOW)
+    if (bat_status == BAT_LOW)
     {
       // Do not start the setup if the battery is low
 
@@ -488,7 +505,7 @@ void loop()
         ((float)receiver_rot[rot].get_rotation() * receiver_rot_rate_gain) -
         gyro[rot].get_smoothed_rad_per_sec();
 
-#if PRINT_RECEIVER_ROT
+#if PRINT_ROT_ERROR
       Serial.print(rot_rate_error[rot]);
       Serial.print("\t");
 #endif
@@ -501,7 +518,7 @@ void loop()
 #endif
     };
 
-#if PRINT_MOTOR_ROT_COMMAND || PRINT_RECEIVER_ROT
+#if PRINT_MOTOR_ROT_COMMAND || PRINT_ROT_ERROR
     Serial.println();
 #endif
     
@@ -567,7 +584,7 @@ void loop()
                           gyro[YAW].get_smoothed_rad_per_sec();
     rot_error[YAW] = 0.0;
 
-#if PRINT_RECEIVER_ROT
+#if PRINT_ROT_ERROR
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
       Serial.print(rot_rate_error[rot]);

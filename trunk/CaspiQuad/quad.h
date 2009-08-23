@@ -37,12 +37,15 @@
 //
 //=============================================================================
 
+#define PRINT_STATE               1
 #define PRINT_CYCLE_TIME          0
 #define PRINT_EEPROM              0
 #define PRINT_RECEIVER            0
-#define PRINT_RECEIVER_ROT        0
+#define PRINT_RECEIVER_ROT        1
+#define PRINT_RECEIVER_THROTTLE   1
 #define PRINT_ACCEL               0
 #define PRINT_GYRO                0
+#define PRINT_ROT_ERROR           0
 #define PRINT_ROT_ESTIMATE        0
 #define PRINT_ROT_CORRECTION      0
 #define PRINT_MOTOR_ROT_COMMAND   0

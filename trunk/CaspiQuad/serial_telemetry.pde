@@ -419,12 +419,12 @@ handle_serial_telemetry(char query)    // In:  Query
     Serial.print(flight_state == FLIGHT_READY ? 1 : 0, BIN);  // Armed
     print_comma();
     
-    Serial.println(0 /* transmitterData[MODE] */);
+    Serial.println(receiver_get_boolean(GEAR_CH)  ? 1 : 0, BIN);   // Mode
 
     cont = true;
-    };
+  };
   
-    break;
+  break;
     
   case 'T':
     // Send processed transmitter values

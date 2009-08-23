@@ -97,11 +97,11 @@ receiver_get_boolean(uint8_t ch); // In:  channel
 
 //======================== receiver_is_at_extreme() ===========================
 //
-// Get a receiver channel data in a boolean (0 or 1) format.  This is used for,
-// e.g., the Gear channel.
+// Check if receiver channel is near minimum or maximum.
 
-int8_t                              // Ret: -1 if near minimum, 1 if near
-                                    //      maximum, 0 otherwise
+int8_t                              // Ret: -1 if near minimum
+                                    //       1 if near maximum
+                                    //       0 otherwise
 receiver_is_at_extreme(uint8_t ch); // In:  channel
 
 
@@ -147,6 +147,7 @@ public:
   // Calculate an average and check whether the raw receiver input is stable
   // around the zero point.  Should be called periodically.
   
+  volatile
   boolean                        // Ret: true if stable aroud zero
   find_zero(void);
   
@@ -192,6 +193,7 @@ private:
   // Calculate an average and check whether the raw receiver input is stable.
   // Should be called periodically.
 
+  volatile
   int16_t                        // Ret: stable point if stable, -1 otherwise
   find_stable(void);
 
@@ -213,7 +215,7 @@ public:
   // Calculate an average and check whether the raw receiver input is stable
   // around the minimum point.  Should be called periodically.
   
-  int16_t                        // Ret: stable point if stable, -1 otherwise
+  volatile boolean                        // Ret: true if stable at minimum
   find_min(void);
   
 
@@ -222,7 +224,7 @@ public:
   // Calculate an average and check whether the raw receiver input is stable
   // around the maximum point.  Should be called periodically.
 
-  int16_t                        // Ret: stable point if stable, -1 otherwise
+  volatile boolean                        // Ret: true if stable at maximum
   find_max(void);
 
 

@@ -52,6 +52,10 @@
 
 #define RECEIVER_MAX_ERRORS 4
 
+// Shift factor for averaging receiver pulse width readings
+
+#define RECEIVER_AVG_SHIFT  2
+
 //-----------------------------------------------------------------------------
 //
 // Receiver rest state determination
@@ -96,10 +100,13 @@ typedef struct
   boolean  last_was_high;   // true if last time channel input was high
   uint8_t  error_count;     // Counts error to detect receiver faults
   uint32_t last_ticks;      // Time (number of ticks) of last pin change
-  uint32_t ticks_high;      // Pulse width (number of ticks) last measured
+  uint16_t ticks_high;      // Average of last measured pulse widths, in units
+                            // of (number of ticks << RECEIVER_AVG_SHIFT)
 } ReceiverChData;
 
 static ReceiverChData ch_data[NUM_CH];
+
+// Receiver status: true if OK, false if not OK
 
 static boolean receiver_status = false;
 
@@ -147,8 +154,13 @@ static void receiver_pci_handler(void     *p_usr,
 
       else
       {
-        p_ch_data->ticks_high -= (p_ch_data->ticks_high >> 2);
-        p_ch_data->ticks_high += (ticks_diff >> 2);
+        // We have a valid reading. Update the stored ticks_high, averaging
+        // with a simple single-pole IIR filter.  Unsigned 16 bits are enough
+        // here.
+        
+        p_ch_data->ticks_high -= ((uint16_t)p_ch_data->ticks_high >> RECEIVER_AVG_SHIFT);
+        p_ch_data->ticks_high += (uint16_t)ticks_diff;
+        
         p_ch_data->error_count = 0;   // Only successful high resets the counter
         error_flag = false;
       }
@@ -282,12 +294,13 @@ receiver_get_current_raw(uint8_t ch) // In:  channel
 
 
   // Save the interrupt status and disable interrupts.
-  // This is required to assure consistent reading of the data.
+  // This is required to assure consistent reading of the data (that may change
+  // during multi-byte reads)
   
   old_sreg = SREG;
   cli();
 
-  data = ch_data[ch].ticks_high;
+  data = ch_data[ch].ticks_high >> RECEIVER_AVG_SHIFT;
 
   // Restore the interrupt status
   
@@ -312,11 +325,11 @@ receiver_get_boolean(uint8_t ch) // In:  channel
 
 //======================== receiver_is_at_extreme() ===========================
 //
-// Get a receiver channel data in a boolean (0 or 1) format.  This is used for,
-// e.g., the Gear channel.
+// Check if receiver channel is near minimum or maximum.
 
-int8_t                             // Ret: -1 if near minimum, 1 if near
-                                   //      maximum, 0 otherwise
+int8_t                              // Ret: -1 if near minimum
+                                    //       1 if near maximum
+                                    //       0 otherwise
 receiver_is_at_extreme(uint8_t ch) // In:  channel
 
 {
@@ -407,6 +420,7 @@ ReceiverRotation::init_zero(void)
 // Calculate an average and check whether the raw receiver input is stable
 // around the zero point.  Should be called periodically.
 
+volatile
 boolean                        // Ret: true if stable aroud zero
 ReceiverRotation::find_zero(void)
 
@@ -414,6 +428,7 @@ ReceiverRotation::find_zero(void)
   int16_t  avg_diff;
   int16_t  zero_diff;
   uint16_t raw;
+  boolean  status;
 
 
   if (! receiver_get_status())
@@ -422,51 +437,68 @@ ReceiverRotation::find_zero(void)
     
     cycle_counter = 0;
     
-    return false;
-  };
-  
-  raw = receiver_get_current_raw(ch);
-  
-  // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
-
-  avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
-  raw_avg += avg_diff;
-
-  zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
-  
-  // To be stable, the current reading must not deviate from average too much.
-  // It also must not deviate from zero too much.
-  
-  if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
-      (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)   ||
-      (zero_diff > (int16_t)RECEIVER_REST_ZERO_DEV_MAX)  ||
-      (zero_diff < (int16_t)-RECEIVER_REST_ZERO_DEV_MAX)
-     )
-  {
-    // Not stable
-    
-    cycle_counter = 0;
-    
-    return false;
-  }
-
-  else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
-  {
-    // Stable, but not for long enough
-    
-    cycle_counter++;
-    
-    return false;
+    status = false;
   }
 
   else
   {
-    // We have been stable long enough, flag a stable condition
+    raw = receiver_get_current_raw(ch);
     
-    raw_zero = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+    // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
 
-    return true;
+    avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
+    raw_avg += avg_diff;
+
+    zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
+    
+    // To be stable, the current reading must not deviate from average too much.
+    // It also must not deviate from zero too much.
+    
+    if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
+        (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)   ||
+        (zero_diff > (int16_t)RECEIVER_REST_ZERO_DEV_MAX)  ||
+        (zero_diff < (int16_t)-RECEIVER_REST_ZERO_DEV_MAX)
+       )
+    {
+      // Not stable
+      
+      cycle_counter = 0;
+      
+      status = false;
+    }
+
+    else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
+    {
+      // Stable, but not for long enough
+      
+      cycle_counter++;
+      
+      status = false;
+    }
+
+    else
+    {
+      // We have been stable long enough, flag a stable condition
+      
+      raw_zero = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+
+      status = true;
+    };
   };
+  
+#if PRINT_RECEIVER_ROT
+  Serial.print(ch, DEC);
+  Serial.print("\t");
+  Serial.print(raw_avg >> RECEIVER_LONG_AVG_FACTOR, DEC);
+  Serial.print("\t");
+  Serial.print(raw_zero, DEC);
+  Serial.print("\t");
+  Serial.print(raw, DEC);
+  Serial.print("\t");
+  Serial.println(cycle_counter, DEC);
+#endif
+
+  return status;
 }
 
 
@@ -518,6 +550,7 @@ ReceiverThrottle::init_stable(void)
 // Calculate an average and check whether the raw receiver input is stable.
 // Should be called periodically.
 
+volatile
 int16_t                        // Ret: stable point if stable, -1 otherwise
 ReceiverThrottle::find_stable(void)
 
@@ -525,6 +558,7 @@ ReceiverThrottle::find_stable(void)
   int16_t  avg_diff;
   int16_t  zero_diff;
   uint16_t raw;
+  int16_t  ret_val;
 
 
   if (! receiver_get_status())
@@ -533,47 +567,62 @@ ReceiverThrottle::find_stable(void)
     
     cycle_counter = 0;
     
-    return -1;
-  };
-  
-  raw = receiver_get_current_raw(THROTTLE_CH);
-  
-  // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
-
-  avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
-  raw_avg += avg_diff;
-
-  zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
-  
-  // To be stable, the current reading must not deviate from average too much.
-  // It also must not deviate from zero too much.
-  
-  if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
-      (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)
-     )
-  {
-    // Not stable
-    
-    cycle_counter = 0;
-    
-    return -1;
-  }
-
-  else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
-  {
-    // Stable, but not for long enough
-    
-    cycle_counter++;
-    
-    return -1;
+    ret_val = -1;
   }
 
   else
   {
-    // We have been stable long enough, flag a stable condition
+    raw = receiver_get_current_raw(THROTTLE_CH);
     
-    return raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+    // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
+
+    avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
+    raw_avg += avg_diff;
+
+    zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
+    
+    // To be stable, the current reading must not deviate from average too much.
+    // It also must not deviate from zero too much.
+    
+    if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
+        (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)
+       )
+    {
+      // Not stable
+      
+      cycle_counter = 0;
+      
+      ret_val = -1;
+    }
+
+    else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
+    {
+      // Stable, but not for long enough
+      
+      cycle_counter++;
+      
+      ret_val = -1;
+    }
+
+    else
+    {
+      // We have been stable long enough, flag a stable condition
+      
+      ret_val = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+    };
   };
+  
+#if PRINT_RECEIVER_THROTTLE
+  Serial.print(THROTTLE_CH, DEC);
+  Serial.print("\t");
+  Serial.print(ret_val, DEC);
+  Serial.print("\t");
+  Serial.print(raw, DEC);
+  Serial.print("\t");
+  Serial.println(cycle_counter, DEC);
+#endif
+
+  return ret_val;
 }
 
 
@@ -582,21 +631,26 @@ ReceiverThrottle::find_stable(void)
 // Calculate an average and check whether the raw receiver input is stable
 // around the minimum point.  Should be called periodically.
 
-int16_t                        // Ret: stable point if stable, -1 otherwise
+volatile boolean                        // Ret: true if stable at minimum
 ReceiverThrottle::find_min(void)
 
 {
   int16_t raw_stable;
+  boolean status;
 
 
   raw_stable = find_stable();
   
   if ((raw_stable > (int16_t)RECEIVER_LOW_THRESHOLD) || (raw_stable < 0))
-    return false;
+    status = false;
 
-  raw_min = raw_stable;
-
-  return true;
+  else
+  {
+    status = true;
+    raw_min = raw_stable;
+  };
+  
+  return status;
 }
 
 
@@ -605,21 +659,26 @@ ReceiverThrottle::find_min(void)
 // Calculate an average and check whether the raw receiver input is stable
 // around the maximum point.  Should be called periodically.
 
-int16_t                        // Ret: stable point if stable, -1 otherwise
+volatile boolean                        // Ret: true if stable at maximum
 ReceiverThrottle::find_max(void)
 
 {
   int16_t raw_stable;
+  boolean status;
 
 
   raw_stable = find_stable();
   
   if (raw_stable < (int16_t)RECEIVER_HIGH_THRESHOLD)
-    return false;
-
-  raw_max = raw_stable;
-
-  return true;
+    status = false;
+    
+  else
+  {
+    status = true;
+    raw_max = raw_stable;
+  };
+  
+  return status;
 }
 
 
