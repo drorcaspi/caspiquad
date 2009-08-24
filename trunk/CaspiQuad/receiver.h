@@ -186,6 +186,8 @@ private:
                                     // Factor for scaling throttle command from
                                     // the receiver to motor throttle command
   uint8_t      cycle_counter;       // Count the number of cycles
+  boolean      is_at_extreme;       // Flags that the throttle has been at min or
+                                    // max since init_stable() has been called
 
 
   //=========================== find_stable() ===================================

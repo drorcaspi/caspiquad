@@ -21,9 +21,15 @@
 //
 //=============================================================================
 
-#define CONTROL_LOOP_CYCLE_SEC 0.02 
-#define MAX_SENSORS_SETUP_SEC  4
-#define SETUP_ARMING_SEC       2
+#define CONTROL_LOOP_CYCLE_SEC 0.02
+
+// Timeout values for the setup state
+
+#define SENSORS_SETUP_MAX_SEC  4.0
+#define SETUP_RECEIVER_MIN_SEC 1.5
+#define SETUP_RECEIVER_MAX_SEC 4.0
+#define SETUP_ARMING_MIN_SEC   2.0
+#define SETUP_ERR_MIN_SEC      4.0
 
 // Main Flight State
 
@@ -42,7 +48,8 @@ typedef enum
   SETUP_RECEIVER_ROTATIONS,     // Waiting for receiver pitch, roll, yaw zero
   SETUP_RECEIVER_THROTTLE_MAX,  // Waiting for receiver throttle maximum
   SETUP_RECEIVER_THROTTLE_MIN,  // Waiting for receiver throttle minimum
-  SETUP_ARMING                  // Arming for flight
+  SETUP_ARMING,                 // Arming for flight
+  SETUP_ERR                     // Setup error
 } SetupState;
 
 
@@ -388,19 +395,26 @@ void loop()
       {
         case SETUP_GYROS:
           // Wait until all the gyros are stable.  If this lasts more than
-          // MAX_SENSORS_SETUP_SEC, indicate an error but continue waiting
+          // SENSORS_SETUP_MAX_SEC, indicate an error but continue waiting
           
           if (gyro[PITCH].is_stable() &&
               gyro[ROLL].is_stable()  &&
               gyro[YAW].is_stable())
           {
+            // Zero all gyros
+            
             gyro[PITCH].zero();
             gyro[ROLL].zero();
             gyro[YAW].zero();
-  
-            indicators_set(IND_SETUP_NEXT);
-            setup_cycles = 0;
+
+            // Advance to next sub-state
+            
+            indicators_set(IND_SETUP_NEXT1);
             setup_state = SETUP_RECEIVER_ROTATIONS;
+            setup_cycles = 0;
+
+            // Initialize receiver rotations & throttle, in preparation for next
+            // sub-state
             
             for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
             {
@@ -409,13 +423,17 @@ void loop()
             receiver_throttle.init_stable();
           }
           
-          else if (setup_cycles <= (uint8_t)(MAX_SENSORS_SETUP_SEC / CONTROL_LOOP_CYCLE_SEC))
+          else if (setup_cycles <= (uint8_t)(SENSORS_SETUP_MAX_SEC / CONTROL_LOOP_CYCLE_SEC))
             setup_cycles++;
           
           else
           {
-            setup_cycles = 0;
+            // The gyros should have stabilized by now.  Issue an error
+            // indication
+            
             indicators_set(IND_SETUP_ERR);
+            setup_state = SETUP_ERR;
+            setup_cycles = 0;
           };
   
           break;
@@ -423,18 +441,32 @@ void loop()
         case SETUP_RECEIVER_ROTATIONS:
           // Wait until the 3 rototations are stable at 0, throttle stable at
           // minimum.  No wait timeout since it depends on the operator.
+
+          // Note that bitwise-and (not logical and) is used in the expression
+          // below. This is necessary; for logical expression the compiler would
+          // do short-circuit evaluation, and would not continue the calculation
+          // if one function returns false.  We need all the functions to by
+          // called in every cycle.
   
-          if (receiver_rot[PITCH].find_zero() &&
-              receiver_rot[ROLL].find_zero()  &&
-              receiver_rot[YAW].find_zero() &&
-              receiver_throttle.find_min())
+          if (((receiver_rot[PITCH].find_zero() &
+                receiver_rot[ROLL].find_zero()  &
+                receiver_rot[YAW].find_zero()   &
+                receiver_throttle.find_min()) != 0)    &&
+              (setup_cycles > (uint8_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
   
-            indicators_set(IND_SETUP_NEXT);
+            indicators_set(IND_SETUP_NEXT2);
             setup_state = SETUP_RECEIVER_THROTTLE_MAX;
+            setup_cycles = 0;
   
+            // Initialize receiver throttle, in preparation for next
+            // sub-state
+            
             receiver_throttle.init_stable();
-          };
+          }
+
+          else if (setup_cycles < 255)
+            setup_cycles++;
   
           break;
   
@@ -442,22 +474,30 @@ void loop()
           // Wait until the the throttle stable at maximum.
           // No wait timeout since it depends on the operator.
   
-          if (receiver_throttle.find_max())
+          if ((receiver_throttle.find_max()) &&
+              (setup_cycles > (uint8_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
   
-            indicators_set(IND_SETUP_NEXT);
+            indicators_set(IND_SETUP_NEXT3);
             setup_state = SETUP_RECEIVER_THROTTLE_MIN;
+            setup_cycles = 0;
   
+            // Initialize receiver throttle, in preparation for next
+            // sub-state
+            
             receiver_throttle.init_stable();
-          };
+          }
+
+          else if (setup_cycles < 255)
+            setup_cycles++;
   
           break;
   
         case SETUP_RECEIVER_THROTTLE_MIN:
           // Wait until the the throttle stable at minimum.
-          // No wait timeout since it depends on the operator.
   
-          if (receiver_throttle.find_min())
+          if ((receiver_throttle.find_min()) &&
+              (setup_cycles > (uint8_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
             // Now we have the minimum and maximum, we can calculate the range factor
             
@@ -465,14 +505,27 @@ void loop()
             
             indicators_set(IND_ARMING);
             setup_state = SETUP_ARMING;
-          };
+            setup_cycles = 0;
+          }
+
+          else if (setup_cycles > (uint8_t)(SETUP_RECEIVER_MAX_SEC / CONTROL_LOOP_CYCLE_SEC))
+          {
+            // Too long time has passed, issue an error indication and start over
+            
+            indicators_set(IND_SETUP_ERR);
+            setup_state = SETUP_ERR;
+            setup_cycles = 0;
+          }
+
+          else
+            setup_cycles++;
   
           break;
   
         case SETUP_ARMING:
           // Indicate that the motors are being enabled.
   
-          if (setup_cycles <= (uint8_t)(SETUP_ARMING_SEC / CONTROL_LOOP_CYCLE_SEC))
+          if (setup_cycles <= (uint8_t)(SETUP_ARMING_MIN_SEC / CONTROL_LOOP_CYCLE_SEC))
             setup_cycles++;
           
           else
@@ -484,6 +537,20 @@ void loop()
           
           break;
   
+        case SETUP_ERR:
+          // Wait for a short time, then start the setup from the beginning
+        
+          if (setup_cycles <= (uint8_t)(SETUP_ERR_MIN_SEC / CONTROL_LOOP_CYCLE_SEC))
+            setup_cycles++;
+          
+          else
+          {
+            setup_state = SETUP_GYROS;
+            setup_cycles = 0;
+          };
+          
+          break;
+
         default:
           indicators_set(IND_SW_ERR);
           flight_state = FLIGHT_ERROR;

@@ -77,8 +77,8 @@
 // Minimum and maximum thresholds, beyond which the receiver input is considered
 // to be at minimum or maximum respectively
 
-#define RECEIVER_LOW_THRESHOLD  (1150 / RECEIVER_TICK)
-#define RECEIVER_HIGH_THRESHOLD (1850 / RECEIVER_TICK)
+#define RECEIVER_LOW_THRESHOLD  (1200 / RECEIVER_TICK)
+#define RECEIVER_HIGH_THRESHOLD (1800 / RECEIVER_TICK)
 
 // Range and factor used in throttle range to motor range conversion.
 // Intended to avoid rounding errors in calculations
@@ -541,6 +541,7 @@ void
 ReceiverThrottle::init_stable(void)
 
 {
+  is_at_extreme = false;
   cycle_counter = 0;
 }
 
@@ -636,19 +637,33 @@ ReceiverThrottle::find_min(void)
 
 {
   int16_t raw_stable;
-  boolean status;
+  boolean status = false;
 
 
-  raw_stable = find_stable();
-  
-  if ((raw_stable > (int16_t)RECEIVER_LOW_THRESHOLD) || (raw_stable < 0))
-    status = false;
-
-  else
+  if (is_at_extreme)
   {
-    status = true;
-    raw_min = raw_stable;
-  };
+    // Throttle has been at low for at least one sample
+    
+    raw_stable = find_stable();
+    
+    if ((raw_stable <= (int16_t)RECEIVER_LOW_THRESHOLD) && (raw_stable >= 0))
+    {
+      // We have stabilized at low throttle
+      
+      status = true;
+      raw_min = raw_stable;
+    };
+  }
+
+  else if (receiver_is_at_extreme(THROTTLE_CH) == -1)
+  {
+    // Throttle is now at low end.  Initialize the average to current reading
+    // to acheive fast convergence.
+    
+    is_at_extreme = true;
+    raw_avg = receiver_get_current_raw(THROTTLE_CH);
+    cycle_counter = 0;
+  }
   
   return status;
 }
@@ -664,19 +679,33 @@ ReceiverThrottle::find_max(void)
 
 {
   int16_t raw_stable;
-  boolean status;
+  boolean status = false;
 
 
-  raw_stable = find_stable();
-  
-  if (raw_stable < (int16_t)RECEIVER_HIGH_THRESHOLD)
-    status = false;
-    
-  else
+  if (is_at_extreme)
   {
-    status = true;
-    raw_max = raw_stable;
-  };
+    // Throttle has been at high for at least one sample
+    
+    raw_stable = find_stable();
+    
+    if (raw_stable >= (int16_t)RECEIVER_HIGH_THRESHOLD)
+    {
+      // We have stabilized at high throttle
+      
+      status = true;
+      raw_max = raw_stable;
+    };
+  }
+
+  else if (receiver_is_at_extreme(THROTTLE_CH) == 1)
+  {
+    // Throttle is now at high end.  Initialize the average to current reading
+    // to acheive fast convergence.
+    
+    is_at_extreme = true;
+    raw_avg = receiver_get_current_raw(THROTTLE_CH);
+    cycle_counter = 0;
+  }
   
   return status;
 }
