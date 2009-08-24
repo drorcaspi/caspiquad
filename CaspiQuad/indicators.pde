@@ -101,7 +101,21 @@ static const uint8_t        setup_led_pattern[]       = {
                                                           5, 35,
                                                           PATTERN_END
                                                         };
-static const uint8_t        setup_next_led_pattern[]  = {
+static const uint8_t        setup_next1_led_pattern[] = {
+                                                          PATTERN_ONCE,
+                                                          5, 5,
+                                                          5, 5,
+                                                          5, 35,
+                                                          PATTERN_END
+                                                        };
+static const uint8_t        setup_next2_led_pattern[] = {
+                                                          PATTERN_ONCE,
+                                                          5, 5,
+                                                          5, 5,
+                                                          5, 35,
+                                                          PATTERN_END
+                                                        };
+static const uint8_t        setup_next3_led_pattern[] = {
                                                           PATTERN_ONCE,
                                                           5, 5,
                                                           5, 5,
@@ -144,10 +158,10 @@ static const uint8_t        hw_err_led_pattern[]      = {
                                                         };
 static const uint8_t        sw_warn_led_pattern[]     = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          10, 10,
+                                                          10, 10,
+                                                          10, 10,
+                                                          10, 30,
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_err_led_pattern[]      = {
@@ -159,7 +173,9 @@ static const uint8_t        sw_err_led_pattern[]      = {
 static const uint8_t *const p_led_patterns[] = {
                                                  none_led_pattern,
                                                  setup_led_pattern,
-                                                 setup_next_led_pattern,
+                                                 setup_next1_led_pattern,
+                                                 setup_next2_led_pattern,
+                                                 setup_next3_led_pattern,
                                                  setup_err_led_pattern,
                                                  arming_led_pattern,
                                                  flight_led_pattern,
@@ -175,21 +191,23 @@ static const uint8_t *const p_led_patterns[] = {
 //-----------------
 
 static const uint8_t        none_buz_pattern[]        = {PATTERN_END};
-#if SETUP_BUZ
-static const uint8_t        setup_buz_pattern[]       = {
-                                                          PATTERN_REPEAT,
+static const uint8_t        setup_buz_pattern[]       = {PATTERN_END};
+static const uint8_t        setup_next1_buz_pattern[] = {
+                                                          PATTERN_ONCE,
                                                           5, 5,
-                                                          5, 35,
                                                           PATTERN_END
                                                         };
-#else
-static const uint8_t        setup_buz_pattern[]       = {PATTERN_END};
-#endif
-static const uint8_t        setup_next_buz_pattern[]  = {
+static const uint8_t        setup_next2_buz_pattern[] = {
                                                           PATTERN_ONCE,
                                                           5, 5,
                                                           5, 5,
-                                                          5, 35,
+                                                          PATTERN_END
+                                                        };
+static const uint8_t        setup_next3_buz_pattern[] = {
+                                                          PATTERN_ONCE,
+                                                          5, 5,
+                                                          5, 5,
+                                                          5, 5,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_err_buz_pattern[]   = {
@@ -224,10 +242,10 @@ static const uint8_t        hw_err_buz_pattern[]      = {
                                                         };
 static const uint8_t        sw_warn_buz_pattern[]     = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          10, 10,
+                                                          10, 10,
+                                                          10, 10,
+                                                          10, 30,
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_err_buz_pattern[]      = {
@@ -239,7 +257,9 @@ static const uint8_t        sw_err_buz_pattern[]      = {
 static const uint8_t *const p_buz_patterns[] = {
                                                  none_buz_pattern,
                                                  setup_buz_pattern,
-                                                 setup_next_buz_pattern,
+                                                 setup_next1_buz_pattern,
+                                                 setup_next2_buz_pattern,
+                                                 setup_next3_buz_pattern,
                                                  setup_err_buz_pattern,
                                                  arming_buz_pattern,
                                                  flight_buz_pattern,

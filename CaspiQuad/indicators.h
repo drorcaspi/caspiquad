@@ -39,7 +39,9 @@ typedef enum
 {
   IND_NONE,
   IND_SETUP,       // Normal mode after power up
-  IND_SETUP_NEXT,  // Prompt to do next step of setup
+  IND_SETUP_NEXT1, // Prompt to do next step of setup
+  IND_SETUP_NEXT2, // Prompt to do next step of setup
+  IND_SETUP_NEXT3, // Prompt to do next step of setup
   IND_SETUP_ERR,   // Some error in setup, e.g., gyros not stable
   IND_ARMING,      // Warning - arming motors
   IND_FLIGHT,      // Everything ready & armed, motors running

@@ -81,12 +81,12 @@ public:
   //=================================== get_*() =================================
   //
 
-  static float get_smooth_factor(void)        {return smooth_factor;}
-  uint16_t     get_raw(void)                  {return raw;};
-  uint16_t     get_raw_zero(void)             {return raw_zero;};
-  float        get_rad_per_sec(void)          {return rad_per_sec;};
-  float        get_smoothed_rad_per_sec(void) {return smoothed_rad_per_sec;};
-  boolean      is_stable(void)                {return stable_flag;};
+  static float     get_smooth_factor(void)        {return smooth_factor;}
+  uint16_t         get_raw(void)                  {return raw;};
+  uint16_t         get_raw_zero(void)             {return raw_zero;};
+  float            get_rad_per_sec(void)          {return rad_per_sec;};
+  float            get_smoothed_rad_per_sec(void) {return smoothed_rad_per_sec;};
+  volatile boolean is_stable(void)                {return stable_flag;};
 
   //============================= print_stats() =================================
   //
