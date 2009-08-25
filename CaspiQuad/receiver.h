@@ -181,13 +181,11 @@ class ReceiverThrottle
 private:
   uint16_t     raw_min;             // Raw receiver reading at minimum
   uint16_t     raw_max;             // Raw receiver reading at maximum
-  uint16_t     raw_avg;             // Average of raw readings
+  uint16_t     raw_stable;          // Candidate for stable throttle reading
   uint16_t     throttle_motor_range_factor;
                                     // Factor for scaling throttle command from
                                     // the receiver to motor throttle command
   uint8_t      cycle_counter;       // Count the number of cycles
-  boolean      is_at_extreme;       // Flags that the throttle has been at min or
-                                    // max since init_stable() has been called
 
 
   //=========================== find_stable() ===================================

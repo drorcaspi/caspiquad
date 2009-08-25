@@ -47,35 +47,57 @@
 // Maximum number of consecutive errors before we decalre a fault.
 // Experience has shown that from time to time we get too-short or too-long
 // pulses from the reciver.  This does not seem to be a s/w bug but either a
-// receiver mis-behavior of a h/w problem.  The current solution is to ignore
+// receiver mis-behavior or a h/w problem.  The current solution is to ignore
 // illegal-width pulses, if their consecutive number is small.
 
-#define RECEIVER_MAX_ERRORS 4
+#define RECEIVER_MAX_ERRORS                  4
 
 // Shift factor for averaging receiver pulse width readings
 
-#define RECEIVER_AVG_SHIFT  2
+#define RECEIVER_AVG_SHIFT                   3
 
 //-----------------------------------------------------------------------------
-//
 // Receiver rest state determination
+//-----------------------------------------------------------------------------
 
-#define RECEIVER_REST_AVG_DEV_MAX    2    // How much the receiver reading can
-                                          // deviate from the long-term average
-                                          // and still be considered stable.
-#define RECEIVER_REST_ZERO_DEV_MAX 100    // How much the receiver reading can
-                                          // deviate from zero and still be
-                                          // zero if stable.
-#define RECEIVER_LONG_AVG_FACTOR     5    // Determines the averaging period. For
-                                          // 20 msec rate this is 2^5 * 20 which
-                                          // is a little more than 0.5 sec.
-#define RECEIVER_REST_CYCLES_MIN    50    // Number of cycles the gyro must be
-                                          // at rest to flag a stable condition
+// How much the receiver reading can deviate from the long-term average
+// and still be considered stable.
+
+#define RECEIVER_REST_AVG_DEV_MAX            2
+
+// How much the receiver reading can deviate from zero and still be
+// zero if stable.
+
+#define RECEIVER_REST_ZERO_DEV_MAX         100
+
+// Shift factor, determines the averaging period. For 20 msec rate this is
+// 2^5 * 20 which is a little more than 0.5 sec.
+
+#define RECEIVER_LONG_AVG_SHIFT              5
+
+// Number of cycles the receiver must be at rest to flag a stable condition
+
+#define RECEIVER_REST_CYCLES_MIN            50
 
 //-----------------------------------------------------------------------------
-//
+// Throttle stable state determination
+// Accuracy is less important than above, so we allow greater deviation and
+// shorter time.
+//-----------------------------------------------------------------------------
+
+// How much the throttle reading can deviate from the stable candidate value
+// and still be considered stable.
+
+#define RECEIVER_THROTTLE_STABLE_DEV_MAX     4
+
+// Number of cycles the throttle must be at rest to flag a stable condition
+
+#define RECEIVER_THROTTLE_STABLE_CYCLES_MIN 25
+
+//-----------------------------------------------------------------------------
 // Minimum and maximum thresholds, beyond which the receiver input is considered
 // to be at minimum or maximum respectively
+//-----------------------------------------------------------------------------
 
 #define RECEIVER_LOW_THRESHOLD  (1200 / RECEIVER_TICK)
 #define RECEIVER_HIGH_THRESHOLD (1800 / RECEIVER_TICK)
@@ -84,7 +106,7 @@
 // Intended to avoid rounding errors in calculations
 
 #define RECEIVER_THROTTLE_RANGE_MAX    1023  // 2^10 - 1
-#define RECEIVER_THROTTLE_RANGE_FACTOR    6  // Shift of 6, still fits in uint16_t
+#define RECEIVER_THROTTLE_RANGE_SHIFT     6  // Result still fits in uint16_t
 
 
 //=============================================================================
@@ -343,10 +365,10 @@ receiver_is_at_extreme(uint8_t ch) // In:  channel
   {
     raw = receiver_get_current_raw(ch);
     
-    if (raw > RECEIVER_HIGH_THRESHOLD)
+    if (raw > (uint16_t)RECEIVER_HIGH_THRESHOLD)
       result = 1;
     
-    else if (raw < RECEIVER_LOW_THRESHOLD)
+    else if (raw < (uint16_t)RECEIVER_LOW_THRESHOLD)
       result = -1;
   }
 
@@ -409,9 +431,9 @@ ReceiverRotation::init_zero(void)
   cycle_counter = 0;
   raw_zero = (uint16_t)RECEIVER_NOM_MID;
   if (receiver_get_status())
-    raw_avg = receiver_get_current_raw(ch) << RECEIVER_LONG_AVG_FACTOR;
+    raw_avg = receiver_get_current_raw(ch) << RECEIVER_LONG_AVG_SHIFT;
   else  
-    raw_avg = (uint16_t)RECEIVER_NOM_MID << RECEIVER_LONG_AVG_FACTOR;
+    raw_avg = (uint16_t)RECEIVER_NOM_MID << RECEIVER_LONG_AVG_SHIFT;
 }
 
 
@@ -444,9 +466,9 @@ ReceiverRotation::find_zero(void)
   {
     raw = receiver_get_current_raw(ch);
     
-    // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
+    // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_SHIFT)
 
-    avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
+    avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_SHIFT));
     raw_avg += avg_diff;
 
     zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
@@ -480,7 +502,7 @@ ReceiverRotation::find_zero(void)
     {
       // We have been stable long enough, flag a stable condition
       
-      raw_zero = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+      raw_zero = raw_avg >> RECEIVER_LONG_AVG_SHIFT;
 
       status = true;
     };
@@ -489,7 +511,7 @@ ReceiverRotation::find_zero(void)
 #if PRINT_RECEIVER_ROT
   Serial.print(ch, DEC);
   Serial.print("\t");
-  Serial.print(raw_avg >> RECEIVER_LONG_AVG_FACTOR, DEC);
+  Serial.print(raw_avg >> RECEIVER_LONG_AVG_SHIFT, DEC);
   Serial.print("\t");
   Serial.print(raw_zero, DEC);
   Serial.print("\t");
@@ -510,11 +532,22 @@ int16_t                        // Ret: centered data, in units of RECEIVER_TICK
 ReceiverRotation::get_rotation(void)
 
 {
+  int16_t ret_val;
+
+  
   if (receiver_get_status())
-    return receiver_get_current_raw(ch) - raw_zero;
+    ret_val = receiver_get_current_raw(ch) - raw_zero;
 
   else
-    return 0;
+    ret_val = 0;
+
+#if PRINT_RECEIVER_ROT
+  Serial.print(ch, DEC);
+  Serial.print("\t");
+  Serial.println(ret_val, DEC);
+#endif
+
+  return ret_val;
 }
 
 
@@ -541,7 +574,6 @@ void
 ReceiverThrottle::init_stable(void)
 
 {
-  is_at_extreme = false;
   cycle_counter = 0;
 }
 
@@ -556,10 +588,9 @@ int16_t                        // Ret: stable point if stable, -1 otherwise
 ReceiverThrottle::find_stable(void)
 
 {
-  int16_t  avg_diff;
-  int16_t  zero_diff;
+  int16_t  diff;
   uint16_t raw;
-  int16_t  ret_val;
+  int16_t  ret_val = -1;
 
 
   if (! receiver_get_status())
@@ -567,49 +598,40 @@ ReceiverThrottle::find_stable(void)
     // Receiver is not OK
     
     cycle_counter = 0;
-    
-    ret_val = -1;
   }
 
   else
   {
     raw = receiver_get_current_raw(THROTTLE_CH);
     
-    // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_FACTOR)
+    // Calculate long-term average, in units of (1 << RECEIVER_LONG_AVG_SHIFT)
 
-    avg_diff = (int16_t)(raw - (raw_avg >> RECEIVER_LONG_AVG_FACTOR));
-    raw_avg += avg_diff;
+    diff = (int16_t)(raw - raw_stable);
 
-    zero_diff = (int16_t)(raw - (uint16_t)RECEIVER_NOM_MID);
+    // To be stable, the current reading must not deviate from raw_stable too much.
     
-    // To be stable, the current reading must not deviate from average too much.
-    // It also must not deviate from zero too much.
-    
-    if ((avg_diff > (int16_t)RECEIVER_REST_AVG_DEV_MAX)    ||
-        (avg_diff < (int16_t)-RECEIVER_REST_AVG_DEV_MAX)
+    if ((diff > (int16_t)RECEIVER_THROTTLE_STABLE_DEV_MAX)    ||
+        (diff < (int16_t)-RECEIVER_THROTTLE_STABLE_DEV_MAX)
        )
     {
-      // Not stable
+      // Not stable. Reset the cycle counter and set a new raw_stable
       
       cycle_counter = 0;
-      
-      ret_val = -1;
+      raw_stable = raw;
     }
 
-    else if (cycle_counter < (uint8_t)RECEIVER_REST_CYCLES_MIN)
+    else if (cycle_counter < (uint8_t)RECEIVER_THROTTLE_STABLE_CYCLES_MIN)
     {
       // Stable, but not for long enough
       
       cycle_counter++;
-      
-      ret_val = -1;
     }
 
     else
     {
       // We have been stable long enough, flag a stable condition
       
-      ret_val = raw_avg >> RECEIVER_LONG_AVG_FACTOR;
+      ret_val = raw_stable;
     };
   };
   
@@ -617,6 +639,8 @@ ReceiverThrottle::find_stable(void)
   Serial.print(THROTTLE_CH, DEC);
   Serial.print("\t");
   Serial.print(ret_val, DEC);
+  Serial.print("\t");
+  Serial.print(raw_stable, DEC);
   Serial.print("\t");
   Serial.print(raw, DEC);
   Serial.print("\t");
@@ -636,34 +660,21 @@ volatile boolean                        // Ret: true if stable at minimum
 ReceiverThrottle::find_min(void)
 
 {
-  int16_t raw_stable;
+  int16_t stable;
   boolean status = false;
 
 
-  if (is_at_extreme)
+  // Throttle has been at low for at least one sample
+  
+  stable = find_stable();
+  
+  if ((stable <= (int16_t)RECEIVER_LOW_THRESHOLD) && (stable >= 0))
   {
-    // Throttle has been at low for at least one sample
+    // We have stabilized at low throttle
     
-    raw_stable = find_stable();
-    
-    if ((raw_stable <= (int16_t)RECEIVER_LOW_THRESHOLD) && (raw_stable >= 0))
-    {
-      // We have stabilized at low throttle
-      
-      status = true;
-      raw_min = raw_stable;
-    };
-  }
-
-  else if (receiver_is_at_extreme(THROTTLE_CH) == -1)
-  {
-    // Throttle is now at low end.  Initialize the average to current reading
-    // to acheive fast convergence.
-    
-    is_at_extreme = true;
-    raw_avg = receiver_get_current_raw(THROTTLE_CH);
-    cycle_counter = 0;
-  }
+    status = true;
+    raw_min = stable;
+  };
   
   return status;
 }
@@ -678,34 +689,21 @@ volatile boolean                        // Ret: true if stable at maximum
 ReceiverThrottle::find_max(void)
 
 {
-  int16_t raw_stable;
+  int16_t stable;
   boolean status = false;
 
 
-  if (is_at_extreme)
+  // Throttle has been at high for at least one sample
+  
+  stable = find_stable();
+  
+  if (stable >= (int16_t)RECEIVER_HIGH_THRESHOLD)
   {
-    // Throttle has been at high for at least one sample
+    // We have stabilized at high throttle
     
-    raw_stable = find_stable();
-    
-    if (raw_stable >= (int16_t)RECEIVER_HIGH_THRESHOLD)
-    {
-      // We have stabilized at high throttle
-      
-      status = true;
-      raw_max = raw_stable;
-    };
-  }
-
-  else if (receiver_is_at_extreme(THROTTLE_CH) == 1)
-  {
-    // Throttle is now at high end.  Initialize the average to current reading
-    // to acheive fast convergence.
-    
-    is_at_extreme = true;
-    raw_avg = receiver_get_current_raw(THROTTLE_CH);
-    cycle_counter = 0;
-  }
+    status = true;
+    raw_max = stable;
+  };
   
   return status;
 }
@@ -731,7 +729,7 @@ ReceiverThrottle::calculate_throttle_motor_factor(void)
   if (throttle_range > (uint16_t)RECEIVER_THROTTLE_RANGE_MAX)
     throttle_range = RECEIVER_THROTTLE_RANGE_MAX;
   throttle_motor_range_factor =
-    (uint16_t)(throttle_range << RECEIVER_THROTTLE_RANGE_FACTOR) /
+    (uint16_t)(throttle_range << RECEIVER_THROTTLE_RANGE_SHIFT) /
                                                 (uint16_t)MOTOR_THROTTLE_RANGE;
 }
 
@@ -745,6 +743,7 @@ ReceiverThrottle::get_throttle(void)
 
 {
   int16_t throttle_diff;
+  int16_t ret_val;
 
   
   if (receiver_get_status())
@@ -758,13 +757,22 @@ ReceiverThrottle::get_throttle(void)
     else if (throttle_diff > (int16_t)RECEIVER_THROTTLE_RANGE_MAX)
       throttle_diff = RECEIVER_THROTTLE_RANGE_MAX;
   
-    return ((uint16_t)((uint16_t)throttle_diff << RECEIVER_THROTTLE_RANGE_FACTOR) / 
+    ret_val = ((uint16_t)((uint16_t)throttle_diff << RECEIVER_THROTTLE_RANGE_SHIFT) / 
                                                         throttle_motor_range_factor) +
-           (uint16_t)MOTOR_THROTTLE_MIN;
+              (uint16_t)MOTOR_THROTTLE_MIN;
   }
   
   else
-    return MOTOR_THROTTLE_MIN;
+    ret_val = MOTOR_THROTTLE_MIN;
+
+  
+#if PRINT_RECEIVER_THROTTLE
+  Serial.print(THROTTLE_CH, DEC);
+  Serial.print("\t");
+  Serial.println(ret_val, DEC);
+#endif
+
+  return ret_val;
 }
 
 

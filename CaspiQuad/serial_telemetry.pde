@@ -396,22 +396,15 @@ handle_serial_telemetry(char query)    // In:  Query
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
       print_comma();
-    
-      // Scale to display range and print
-      
-      Serial.print((int16_t)(motor_rot_command[rot] *
-                   (int16_t)(SENSOR_DISPLAY_RANGE / MOTOR_ROTATION_RATE_RANGE)));
+      Serial.print(motor_rot_command[rot], DEC);
     };
 
+    // Print motor commands (pulse width in usec)
+    
     for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
     {
       print_comma();
-      
-      // Scale to display range and print
-      
-      Serial.print((uint16_t)(((motors_get_current_command(dir) - MOTOR_THROTTLE_MIN) *
-                               (MOTOR_COMMAND_DISPLAY_RANGE / MOTOR_THROTTLE_RANGE)) +
-                              MOTOR_COMMAND_DISPLAY_MIN));
+      Serial.print(motors_get_current_pw_usec(dir), DEC);
     };
     
     print_comma();
@@ -446,11 +439,7 @@ handle_serial_telemetry(char query)    // In:  Query
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
       print_comma();
-    
-      // Scale to display range and print
-      
-      Serial.print((int16_t)(motor_rot_command[rot] *
-                   (int16_t)(SENSOR_DISPLAY_RANGE / MOTOR_ROTATION_RATE_RANGE)));
+      Serial.print(motor_rot_command[rot], DEC);
     };
 
     Serial.println();
