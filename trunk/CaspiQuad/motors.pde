@@ -183,14 +183,26 @@ motors_command(
 };
 
 
-//============================= motors_get_*() ================================
+//====================== motors_get_current_command() =========================
 //
-// See the description in motors.h
+// Retrieve the motor command, as sent to AnalogWrite()
 
 uint8_t motors_get_current_command(uint8_t dir)
 
 {
   return motors_current_commands[dir];
+};
+
+
+//====================== motors_get_current_pw_usec() =========================
+//
+// Retrieve the motor command pulse width, as sent to the ESC
+
+uint16_t motors_get_current_pw_usec(uint8_t dir)
+
+{
+  return ((uint32_t)motors_current_commands[dir] * (uint32_t)MOTORS_PWM_CYCLE_USEC) /
+                                                  (uint16_t)MOTOR_COMMAND_RANGE;
 };
 
 

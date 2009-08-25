@@ -21,15 +21,15 @@
 //
 //=============================================================================
 
-#define CONTROL_LOOP_CYCLE_SEC 0.02
+#define CONTROL_LOOP_CYCLE_SEC  0.02
 
 // Timeout values for the setup state
 
-#define SENSORS_SETUP_MAX_SEC  4.0
-#define SETUP_RECEIVER_MIN_SEC 1.5
-#define SETUP_RECEIVER_MAX_SEC 4.0
-#define SETUP_ARMING_MIN_SEC   2.0
-#define SETUP_ERR_MIN_SEC      4.0
+#define SENSORS_SETUP_MAX_SEC   5.0
+#define SETUP_RECEIVER_MIN_SEC  1.5
+#define SETUP_RECEIVER_MAX_SEC 10.0
+#define SETUP_ARMING_MIN_SEC    2.0
+#define SETUP_ERR_MIN_SEC       5.0
 
 // Main Flight State
 
@@ -227,7 +227,7 @@ void loop()
 {
   // Static Local Variables
   
-  static uint8_t     setup_cycles                = 0;
+  static uint16_t    setup_cycles                = 0;
   static SetupState  setup_state                 = SETUP_GYROS;
 
   // Local Variables
@@ -351,7 +351,8 @@ void loop()
 #endif
 
   if ((receiver_is_at_extreme(THROTTLE_CH) == -1) &&
-      (receiver_is_at_extreme(YAW_CH) == -1))
+      (receiver_is_at_extreme(YAW_CH)      ==  1) &&
+      ((flight_state != FLIGHT_SETUP) || (setup_state != SETUP_GYROS)))
   {
     // TODO:  Same if Gyros are stable but only after flight.
     // Minimum throttle + yaw stick left indicates immediate stop.
@@ -360,6 +361,7 @@ void loop()
     motors_disable();
     flight_state = FLIGHT_SETUP;
     setup_state = SETUP_GYROS;
+    setup_cycles = 0;
     indicators_set(IND_SETUP);
   }
 
@@ -423,7 +425,7 @@ void loop()
             receiver_throttle.init_stable();
           }
           
-          else if (setup_cycles <= (uint8_t)(SENSORS_SETUP_MAX_SEC / CONTROL_LOOP_CYCLE_SEC))
+          else if (setup_cycles <= (uint16_t)(SENSORS_SETUP_MAX_SEC / CONTROL_LOOP_CYCLE_SEC))
             setup_cycles++;
           
           else
@@ -452,7 +454,7 @@ void loop()
                 receiver_rot[ROLL].find_zero()  &
                 receiver_rot[YAW].find_zero()   &
                 receiver_throttle.find_min()) != 0)    &&
-              (setup_cycles > (uint8_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
+              (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
   
             indicators_set(IND_SETUP_NEXT2);
@@ -465,17 +467,17 @@ void loop()
             receiver_throttle.init_stable();
           }
 
-          else if (setup_cycles < 255)
+          else if (setup_cycles < (uint16_t)-1)
             setup_cycles++;
   
           break;
   
         case SETUP_RECEIVER_THROTTLE_MAX:
-          // Wait until the the throttle stable at maximum.
+          // Wait until the the throttle is stable at maximum.
           // No wait timeout since it depends on the operator.
   
           if ((receiver_throttle.find_max()) &&
-              (setup_cycles > (uint8_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
+              (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
   
             indicators_set(IND_SETUP_NEXT3);
@@ -488,7 +490,7 @@ void loop()
             receiver_throttle.init_stable();
           }
 
-          else if (setup_cycles < 255)
+          else if (setup_cycles < (uint16_t)-1)
             setup_cycles++;
   
           break;
@@ -497,7 +499,7 @@ void loop()
           // Wait until the the throttle stable at minimum.
   
           if ((receiver_throttle.find_min()) &&
-              (setup_cycles > (uint8_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
+              (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
             // Now we have the minimum and maximum, we can calculate the range factor
             
@@ -508,7 +510,7 @@ void loop()
             setup_cycles = 0;
           }
 
-          else if (setup_cycles > (uint8_t)(SETUP_RECEIVER_MAX_SEC / CONTROL_LOOP_CYCLE_SEC))
+          else if (setup_cycles > (uint16_t)(SETUP_RECEIVER_MAX_SEC / CONTROL_LOOP_CYCLE_SEC))
           {
             // Too long time has passed, issue an error indication and start over
             
@@ -525,7 +527,7 @@ void loop()
         case SETUP_ARMING:
           // Indicate that the motors are being enabled.
   
-          if (setup_cycles <= (uint8_t)(SETUP_ARMING_MIN_SEC / CONTROL_LOOP_CYCLE_SEC))
+          if (setup_cycles <= (uint16_t)(SETUP_ARMING_MIN_SEC / CONTROL_LOOP_CYCLE_SEC))
             setup_cycles++;
           
           else
@@ -540,7 +542,7 @@ void loop()
         case SETUP_ERR:
           // Wait for a short time, then start the setup from the beginning
         
-          if (setup_cycles <= (uint8_t)(SETUP_ERR_MIN_SEC / CONTROL_LOOP_CYCLE_SEC))
+          if (setup_cycles <= (uint16_t)(SETUP_ERR_MIN_SEC / CONTROL_LOOP_CYCLE_SEC))
             setup_cycles++;
           
           else

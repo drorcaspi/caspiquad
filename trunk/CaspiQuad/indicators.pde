@@ -333,7 +333,9 @@ Indicator::update(void)   // In:  Status to indicate
     else
       current_status = status;
 
-#if 0    
+#if PRINT_INDICATORS
+    Serial.print(pin, DEC);
+    Serial.print("\t");
     Serial.print(status, DEC);
     Serial.print("\t");
     Serial.print(temp_status, DEC);
@@ -399,6 +401,7 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
     {
       // PATTERN_END at the start of the pattern means no status indication
 
+      status = status_in;
       pattern_counter = 0;
       cycle_counter = 0;
       
@@ -415,24 +418,27 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
       else
         status = status_in;
     
-#if 0
-      Serial.print(p_pattern[0], DEC);
-      Serial.print("\t");
-      Serial.print(status, DEC);
-      Serial.print("\t");
-      Serial.println(temp_status, DEC);
-#endif
-
       // The actual pattern starts at entry #1
       
       pattern_counter = 1;
       cycle_counter = p_pattern[1];
 
-      //Serial.println(cycle_counter, DEC);
-
       digitalWrite(pin, 1);
     }
   }
+
+#if PRINT_INDICATORS
+  Serial.print(pin, DEC);
+  Serial.print("\t");
+  Serial.print(p_pattern[0], DEC);
+  Serial.print("\t");
+  Serial.print(status, DEC);
+  Serial.print("\t");
+  Serial.print(temp_status, DEC);
+  Serial.print("\t");
+  Serial.println(cycle_counter, DEC);
+#endif
+  
 };
 
 

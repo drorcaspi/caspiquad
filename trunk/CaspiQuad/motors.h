@@ -126,12 +126,18 @@ motors_command(
   int16_t  yaw_rate);   // In:  Yaw rate  (centered at 0)
 
 
-//========================= motors_get_current_*() ============================
+//====================== motors_get_current_command() =========================
 //
-// Retrieve the internal command, short & long averages of a single motor
-// These functions are intended for telemetry & printing.
+// Retrieve the motor command, as sent to AnalogWrite()
 
 uint8_t motors_get_current_command(uint8_t dir);
+
+
+//====================== motors_get_current_pw_usec() =========================
+//
+// Retrieve the motor command pulse width, as sent to the ESC
+
+uint16_t motors_get_current_pw_usec(uint8_t dir);
 
 
 //========================== motors_print_stats() =============================
