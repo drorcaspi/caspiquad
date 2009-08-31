@@ -547,6 +547,9 @@ ReceiverRotation::get_rotation(void)
   Serial.println(ret_val, DEC);
 #endif
 
+  if ((ret_val < 4) && (ret_val > -4))
+    ret_val = 0;
+    
   return ret_val;
 }
 
