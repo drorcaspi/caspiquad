@@ -149,7 +149,25 @@ motors_command(
                            -throttle_limit / 2,
                            throttle_limit / 2);
       
-    // Calculate motor commands.
+    // Calculate Motor Commands:
+    // ------------------------
+    //
+    // Rotation is defined as follows:
+    //
+    //   Pitch - nose down rotation about Y Body Axis
+    //   Roll  - left wing down rotation about X Body Axis
+    //   Yaw   - nose left rotation about Z Body Axis
+    //
+    // Front & rear motors turn clockwise, right & left motors turn counter-
+    // clockwise.
+    //
+    // Thus, the simplified calulation of motor commands is as follows:
+    //
+    //   front = throttle - pitch - yaw
+    //   back  = throttle + pitch - yaw
+    //   right = throttle + roll  + yaw
+    //   left  = throttle - roll  + yaw
+    //
     // Note the scaling down to command range (shift by MOTOR_THROTTLE_FACTOR) is
     // done only after the summing of trottle and rotations.  This reduces the
     // roundoff errors.
@@ -157,11 +175,11 @@ motors_command(
     throttle_limit >>= MOTOR_THROTTLE_FACTOR;
     
     motors_current_commands[FRONT] =
-      constrain((int16_t)(throttle + pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
+      constrain((int16_t)(throttle - pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
                 (int16_t)MOTOR_COMMAND_MIN,
                 throttle_limit);
     motors_current_commands[REAR ] =
-      constrain((int16_t)(throttle - pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
+      constrain((int16_t)(throttle + pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
                 (int16_t)MOTOR_COMMAND_MIN,
                 throttle_limit);
     motors_current_commands[RIGHT] =
