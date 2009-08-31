@@ -102,17 +102,15 @@ void motors_disable(void);
 //   Roll  - left wing down rotation about X Body Axis
 //   Yaw   - nose left rotation about Z Body Axis
 //
-// TODO: check whether the above is also how the transmitter works
-//
 // Front & rear motors turn clockwise, right & left motors turn counter-
 // clockwise.
 //
 // Thus, the simplified calulation of motor commands is as follows:
 //
-//   front = throttle + pitch - yaw
-//   back  = throttle - pitch - yaw
-//   right = throttle - roll  + yaw
-//   left  = throttle + roll  + yaw
+//   front = throttle - pitch - yaw
+//   back  = throttle + pitch - yaw
+//   right = throttle + roll  + yaw
+//   left  = throttle - roll  + yaw
 //
 // However, internally the function also takes into account the following:
 //
