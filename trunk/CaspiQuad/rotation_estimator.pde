@@ -53,7 +53,7 @@
 
 // Limit on the time estimation is based on gyro input only
 
-#define ROTATION_ESTIMATOR_INAVLID_ACC_CYCLE_LIMIT 25
+#define ROTATION_ESTIMATOR_INAVLID_ACC_CYCLE_LIMIT 25  // TODO: FIX THIS
 
 
 //=============================================================================
@@ -63,7 +63,7 @@
 //=============================================================================
 
 float RotationEstimator::bw          = 1;
-float RotationEstimator::cycle       = 0.02;
+float RotationEstimator::cycle       = CONTROL_LOOP_CYCLE_SEC;
 float RotationEstimator::bw_2;
 float RotationEstimator::cycle_bw_sq;
 

@@ -21,8 +21,6 @@
 //
 //=============================================================================
 
-#define CONTROL_LOOP_CYCLE_SEC  0.02
-
 // Timeout values for the setup state
 
 #define SENSORS_SETUP_MAX_SEC   5.0

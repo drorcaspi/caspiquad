@@ -71,8 +71,9 @@
 #define GYRO_LONG_AVG_FACTOR        6    // Determines the averaging period. For
                                          // 20 msec rate this is 2^6 * 20 which
                                          // is a little more than 1 sec.
-#define GYRO_REST_CYCLES_MIN      100    // Number of cycles the gyro must be
+#define GYRO_REST_MSEC_MIN       2000    // Time (in msec the) gyro must be
                                          // at rest to flag a stable condition
+#define GYRO_REST_CYCLES_MIN     (GYRO_REST_MSEC_MIN / CONTROL_LOOP_CYCLE_MSEC)
                                          
 
 //=============================================================================

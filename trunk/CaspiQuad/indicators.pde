@@ -35,9 +35,10 @@
 //
 //=============================================================================
 
-#define PATTERN_REPEAT ((uint8_t)-1)
-#define PATTERN_ONCE   ((uint8_t)-2)
-#define PATTERN_END    ((uint8_t) 0)
+#define INDICATOR_TICK_MSEC  100
+#define PATTERN_REPEAT       ((uint8_t)-1)
+#define PATTERN_ONCE         ((uint8_t)-2)
+#define PATTERN_END          ((uint8_t) 0)
 
 //=============================================================================
 //
@@ -97,76 +98,76 @@ public:
 static const uint8_t        none_led_pattern[]        = {PATTERN_END};
 static const uint8_t        setup_led_pattern[]       = {
                                                           PATTERN_REPEAT,
-                                                          5, 5,
-                                                          5, 35,
+                                                          1, 1,
+                                                          1, 7,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_next1_led_pattern[] = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 7,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_next2_led_pattern[] = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 7,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_next3_led_pattern[] = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 7,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_err_led_pattern[]   = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 7,
                                                           PATTERN_END
                                                         };
 static const uint8_t        arming_led_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          5, 5,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        flight_led_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          50, 50,
+                                                          5, 5,
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_warn_led_pattern[]    = {
                                                           PATTERN_REPEAT,
-                                                          25, 25,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_low_led_pattern[]     = {
                                                           PATTERN_REPEAT,
-                                                          5, 15,
+                                                          1, 3,
                                                           PATTERN_END
                                                         };
 static const uint8_t        hw_err_led_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          5, 5,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_warn_led_pattern[]     = {
                                                           PATTERN_ONCE,
-                                                          10, 10,
-                                                          10, 10,
-                                                          10, 10,
-                                                          10, 30,
+                                                          2, 2,
+                                                          2, 2,
+                                                          2, 2,
+                                                          2, 6,
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_err_led_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          10, 10,
+                                                          2, 2,
                                                           PATTERN_END
                                                         };
 
@@ -194,63 +195,63 @@ static const uint8_t        none_buz_pattern[]        = {PATTERN_END};
 static const uint8_t        setup_buz_pattern[]       = {PATTERN_END};
 static const uint8_t        setup_next1_buz_pattern[] = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_next2_buz_pattern[] = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
+                                                          1, 1,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_next3_buz_pattern[] = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        setup_err_buz_pattern[]   = {
                                                           PATTERN_ONCE,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 5,
-                                                          5, 35,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 1,
+                                                          1, 7,
                                                           PATTERN_END
                                                         };
 static const uint8_t        arming_buz_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          5, 5,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        flight_buz_pattern[]      = {PATTERN_END};
 static const uint8_t        bat_warn_buz_pattern[]    = {
                                                           PATTERN_REPEAT,
-                                                          5, 45,
+                                                          1, 9,
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_low_buz_pattern[]     = {
                                                           PATTERN_REPEAT,
-                                                          5, 15,
+                                                          1, 3,
                                                           PATTERN_END
                                                         };
 static const uint8_t        hw_err_buz_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          5, 5,
+                                                          1, 1,
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_warn_buz_pattern[]     = {
                                                           PATTERN_ONCE,
-                                                          10, 10,
-                                                          10, 10,
-                                                          10, 10,
-                                                          10, 30,
+                                                          2, 2,
+                                                          2, 2,
+                                                          2, 2,
+                                                          2, 6,
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_err_buz_pattern[]      = {
                                                           PATTERN_REPEAT,
-                                                          10, 10,
+                                                          2, 2,
                                                           PATTERN_END
                                                         };
 
@@ -469,8 +470,16 @@ void
 indicators_update(void)
 
 {
-  led_indicator.update();
-  buz_indicator.update();
+  static uint8_t cycles_counter = 0;
+
+
+  if (++cycles_counter >= (uint8_t)(INDICATOR_TICK_MSEC / CONTROL_LOOP_CYCLE_MSEC))
+  {
+    cycles_counter = 0;
+    
+    led_indicator.update();
+    buz_indicator.update();
+  };
 };
 
 
