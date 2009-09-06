@@ -105,4 +105,15 @@
 #define NUM_ROTATIONS    3
 #define FIRST_ROTATION   ROLL
 
+
+//=============================================================================
+//
+// Control Loop Definitions
+//
+//=============================================================================
+
+#define CONTROL_LOOP_CYCLE_MSEC 10
+#define CONTROL_LOOP_CYCLE_SEC  (CONTROL_LOOP_CYCLE_MSEC * 0.001)
+
+
 #endif
