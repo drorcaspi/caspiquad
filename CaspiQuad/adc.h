@@ -1,6 +1,9 @@
+#ifndef __ADC_H__
+#define __ADC_H__
+
 //=============================================================================
 //
-// Battery Sensor Handler
+// ADC Module Public API
 //
 //=============================================================================
 
@@ -25,27 +28,22 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
-#include "quad.h"
-#include "bat_sensor.h"
+//=============================================================================
+//
+// Public Definitions
+//
+//=============================================================================
+
+#define ADC_CYCLE_USEC 1024
 
 
 //=============================================================================
 //
-// Battery Sensor Definitions
+// Public Variables
 //
 //=============================================================================
 
-// Sensor output voltage thresholds, in volts
-
-#define BAT_SENSOR_WARN_THR_V          2.0   // TODO: ????????
-#define BAT_SENSOR_LOW_THR_V           1.0   // TODO: ????????
-
-// Derived Definitions in Numbers
-
-#define BAT_SENSOR_NO_BAT              169
-#define BAT_SENSOR_ONE_BAT             340
-#define BAT_SENSOR_WARN_THR            707
-#define BAT_SENSOR_LOW_THR             658
+extern uint8_t adc_cycles;
 
 
 //=============================================================================
@@ -54,48 +52,28 @@
 //
 //=============================================================================
 
-//========================= bat_sensor_init() =================================
+//=========================== adc_init() ======================================
 //
-// Initialize the battery sensor
-
-void
-bat_sensor_init(void)
-
-{
-  // Nothing
-}
-
-
-//========================= bat_sensor_get() ==================================
+// Initialize the ADC module
 //
-// Get the battery status
 
-BatStatus
-bat_sensor_get(void)
-
-{
-  uint16_t  sense;
-  BatStatus status;
+void adc_init(void);
 
 
-  sense = adc_get_data(BAT_SENSOR_PIN);
+//=========================== adc_get_data() ==================================
+//
+// Get the data of a single ADC channel
+//
 
-#if PRINT_BAT_SENSOR
-  Serial.print("Bat: ");
-  Serial.println(sense, DEC);
+uint16_t                   // Ret: ADC data
+adc_get_data(uint8_t ch);  // In : ADC channel
+
+
+//=========================== adc_print_stats() ===============================
+//
+// Print the ADC statistics
+//
+
+void adc_print_stats(void);
+
 #endif
-
-#if 1
-  if ((sense > BAT_SENSOR_WARN_THR) || (sense < BAT_SENSOR_ONE_BAT))
-    status = BAT_OK;
-  else if (sense > BAT_SENSOR_LOW_THR)
-    status = BAT_WARN;
-  else
-    status = BAT_LOW;
-#else
-  status = BAT_OK;
-#endif  
-
-  return status;
-}
-
