@@ -3,6 +3,7 @@
 #include <EEPROM.h>
 
 #include "quad.h"
+#include "adc.h"
 #include "bat_sensor.h"
 #include "motors.h"
 #include "gyro.h"
@@ -163,9 +164,9 @@ void setup()
   int            eeprom_addr;
 
 
-  analogReference(ANALOG_REFERENCE);
   Serial.begin(115200);
 
+  adc_init();
   bat_sensor_init();
   indicators_init();
   eeprom_init();
@@ -211,7 +212,7 @@ void setup()
   };
 
   indicators_set(IND_SETUP);
-  last_msec = millis();
+  last_msec = adc_cycles;
 }
 
 
@@ -249,7 +250,7 @@ void loop()
   // Wait for start of next cycle
   //---------------------------------------------------------------------------
   
-  current_msec = millis();
+  current_msec = adc_cycles;  // TODO: this is in 1.024msec in fact
   cycle_msec = (uint8_t)(current_msec- last_msec);
   
   if (cycle_msec > (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
@@ -263,7 +264,7 @@ void loop()
 
   while (cycle_msec < (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
   {
-    current_msec = millis();
+    current_msec = adc_cycles;
     cycle_msec = (uint8_t)(current_msec- last_msec);
   };
 

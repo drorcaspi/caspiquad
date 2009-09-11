@@ -123,7 +123,6 @@ Gyro::init(uint8_t ain_in)
 
 {
   ain = ain_in;
-  pinMode(ain_in, INPUT);
 };
 
 
@@ -140,7 +139,7 @@ Gyro::update(void)
   int16_t zero_diff;
 
   
-  raw = analogRead(ain);
+  raw = adc_get_data(ain);
 
   // Calculate long-term average, in units of (1 << GYRO_LONG_AVG_FACTOR)
 
@@ -176,7 +175,7 @@ Gyro::update(void)
   rad_per_sec = (float)zero_diff / (float)GYRO_SENS_PER_RAD_PER_SEC;
 
   smoothed_rad_per_sec = (one_minus_smooth_factor * smoothed_rad_per_sec) +
-                         (smooth_factor * rad_per_sec);
+                         (smooth_factor * rad_per_sec); // TODO:
   
 
   cycle_counter++;
