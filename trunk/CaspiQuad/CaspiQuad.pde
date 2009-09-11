@@ -63,7 +63,7 @@ typedef enum
 
 // Cycle Timing Variables
 
-uint32_t          last_msec      = 0;
+uint8_t           last_msec      = 0;
 uint16_t          avg_cycle_msec = 0;
 uint8_t           max_cycle_msec = 0;
 
@@ -212,7 +212,8 @@ void setup()
   };
 
   indicators_set(IND_SETUP);
-  last_msec = adc_cycles;
+  //last_msec = adc_cycles;
+  last_msec = millis();
 }
 
 
@@ -231,7 +232,7 @@ void loop()
 
   // Local Variables
   
-  uint32_t           current_msec;
+  uint8_t            current_msec;
   uint8_t            cycle_msec;
   int8_t             accel_raw[NUM_AXIS];
   uint16_t           accel_abs_sq;
@@ -250,8 +251,9 @@ void loop()
   // Wait for start of next cycle
   //---------------------------------------------------------------------------
   
-  current_msec = adc_cycles;  // TODO: this is in 1.024msec in fact
-  cycle_msec = (uint8_t)(current_msec- last_msec);
+  //current_msec = adc_cycles;  // TODO: this is in 1.024msec in fact
+  current_msec = millis();
+  cycle_msec = (uint8_t)(current_msec - last_msec);
   
   if (cycle_msec > (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
     indicators_set(IND_SW_WARN);
@@ -264,7 +266,8 @@ void loop()
 
   while (cycle_msec < (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
   {
-    current_msec = adc_cycles;
+    //current_msec = adc_cycles;
+    current_msec = millis();
     cycle_msec = (uint8_t)(current_msec- last_msec);
   };
 
