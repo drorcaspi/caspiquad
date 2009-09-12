@@ -144,11 +144,12 @@ static const uint8_t        flight_led_pattern[]      = {
                                                         };
 static const uint8_t        bat_warn_led_pattern[]    = {
                                                           PATTERN_REPEAT,
-                                                          1, 1,
+                                                          1, 9,
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_low_led_pattern[]     = {
                                                           PATTERN_REPEAT,
+                                                          1, 1,
                                                           1, 3,
                                                           PATTERN_END
                                                         };
@@ -233,6 +234,7 @@ static const uint8_t        bat_warn_buz_pattern[]    = {
                                                         };
 static const uint8_t        bat_low_buz_pattern[]     = {
                                                           PATTERN_REPEAT,
+                                                          1, 1,
                                                           1, 3,
                                                           PATTERN_END
                                                         };
