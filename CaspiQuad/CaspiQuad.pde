@@ -177,7 +177,7 @@ void setup()
   
   // Gyro
   
-  eeprom_addr = Gyro::read_eeprom(eeprom_addr, 0.2);  // Default smooting factor
+  eeprom_addr = Gyro::read_eeprom(eeprom_addr);
   gyro[PITCH].init(PITCH_RATE_PIN);
   gyro[ROLL].init(ROLL_RATE_PIN);
   gyro[YAW].init(YAW_RATE_PIN);
@@ -574,7 +574,7 @@ void loop()
       
       rot_rate_error[rot] = 
         ((float)receiver_rot[rot].get_rotation() * receiver_rot_rate_gain) -
-        gyro[rot].get_smoothed_rad_per_sec();
+        gyro[rot].get_rad_per_sec();
 
 #if PRINT_ROT_ERROR
       Serial.print(rot_rate_error[rot]);
@@ -607,7 +607,7 @@ void loop()
       // Target is pitch rate
       
       rot_rate_error[PITCH] = ((float)temp_receiver_raw * receiver_rot_rate_gain) -
-                              gyro[PITCH].get_smoothed_rad_per_sec();
+                              gyro[PITCH].get_rad_per_sec();
       rot_error[PITCH] = 0.0;
     }
 
@@ -615,7 +615,7 @@ void loop()
     {
       // Target is pitch 
       
-      rot_rate_error[PITCH] = -gyro[PITCH].get_smoothed_rad_per_sec();
+      rot_rate_error[PITCH] = -gyro[PITCH].get_rad_per_sec();
       rot_error[PITCH] = ((float)temp_receiver_raw * receiver_rot_gain) -
                          pitch_estimate;
     };
@@ -631,7 +631,7 @@ void loop()
       // Target is roll rate
       
       rot_rate_error[ROLL] = ((float)temp_receiver_raw * receiver_rot_rate_gain) -
-                              gyro[ROLL].get_smoothed_rad_per_sec();
+                              gyro[ROLL].get_rad_per_sec();
       rot_error[ROLL] = 0.0;
     }
     
@@ -639,7 +639,7 @@ void loop()
     {
       // Target is roll
       
-      rot_rate_error[ROLL] = -gyro[ROLL].get_smoothed_rad_per_sec();
+      rot_rate_error[ROLL] = -gyro[ROLL].get_rad_per_sec();
       rot_error[ROLL] = ((float)temp_receiver_raw * receiver_rot_gain) -
                         roll_estimate;
     };
@@ -652,7 +652,7 @@ void loop()
     // Target is yaw rate
     
     rot_rate_error[YAW] = ((float)temp_receiver_raw * receiver_rot_rate_gain) - 
-                          gyro[YAW].get_smoothed_rad_per_sec();
+                          gyro[YAW].get_rad_per_sec();
     rot_error[YAW] = 0.0;
 
 #if PRINT_ROT_ERROR

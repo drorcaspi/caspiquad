@@ -214,8 +214,7 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'K':
     // Receive data filtering values
     
-    Gyro::set_smooth_factor(serial_read_float());
-    
+    dummy = serial_read_float();  // *** NOT IMPLEMENTED *** smoothFactor[GYRO]
     dummy = serial_read_float();  // *** NOT IMPLEMENTED *** smoothFactor[ACCEL]
     
     RotationEstimator::set_bw(serial_read_float());
@@ -305,10 +304,10 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'L':
     // Send data filtering values
     
-    Serial.print(Gyro::get_smooth_factor());
+    Serial.print(1.0 /* *** NOT IMPLEMENTED *** smoothFactor[GYRO] */);
     print_comma();
     
-    Serial.print(0.0 /* *** NOT IMPLEMENTED *** smoothFactor[ACCEL] */);
+    Serial.print(1.0 /* *** NOT IMPLEMENTED *** smoothFactor[ACCEL] */);
     print_comma();
     
     Serial.println(RotationEstimator::get_bw());

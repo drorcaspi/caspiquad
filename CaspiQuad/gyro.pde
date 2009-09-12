@@ -82,22 +82,13 @@
 //
 //=============================================================================
 
-float Gyro::smooth_factor;       // Smooting factor, used in 1-pole IIR LPF
-float Gyro::one_minus_smooth_factor;
-                                 // 1 - smooth_factor
 int   Gyro::eeprom_base_addr;    // Base address in EEPROM
 
 
 //=================================== set_*() =================================
 //
 
-void Gyro::set_smooth_factor(float smooth_factor_in)
-
-{
-  smooth_factor = smooth_factor_in;
-  one_minus_smooth_factor = 1 - smooth_factor_in;
-};
-
+// None
 
 //============================= Constructor ===================================
 
@@ -174,10 +165,6 @@ Gyro::update(void)
   
   rad_per_sec = (float)zero_diff / (float)GYRO_SENS_PER_RAD_PER_SEC;
 
-  smoothed_rad_per_sec = (one_minus_smooth_factor * smoothed_rad_per_sec) +
-                         (smooth_factor * rad_per_sec); // TODO:
-  
-
   cycle_counter++;
 };
 
@@ -221,21 +208,14 @@ Gyro::print_stats(void)
 // Read the configuration parameters from EEPROM, if valid.  If not, set
 // defaults.
 
-int                         // Ret: Next address in EEPROM
-Gyro::read_eeprom(
-  int   eeprom_base_addr_in,// In: Base address in EEPROM
-  float smooth_factor)      // Smooting factor, used in 1-pole IIR LPF
+int                                           // Ret: Next address in EEPROM
+Gyro::read_eeprom(int   eeprom_base_addr_in)  // In: Base address in EEPROM
 
 {
   eeprom_base_addr = eeprom_base_addr_in;
   
-  if (eeprom_is_ok())
-  {
-    set_smooth_factor(eeprom_read_float(eeprom_base_addr_in));
-  }
-  
-  else
-    set_smooth_factor(smooth_factor);
+  // Do nothing.  A float variable place is reserved for backward
+  // compatibility  
   
   return eeprom_base_addr_in + sizeof(float);
 };
@@ -248,7 +228,7 @@ Gyro::read_eeprom(
 void Gyro::write_eeprom(void)
 
 {
-  eeprom_write_float(eeprom_base_addr, smooth_factor);
+  // Do nothing
 };
 
 

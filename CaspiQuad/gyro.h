@@ -33,9 +33,6 @@ class Gyro
 
 {
 private:
-  static float smooth_factor;       // Smooting factor, used in 1-pole IIR LPF
-  static float one_minus_smooth_factor;
-                                    // 1 - smooth_factor
   static int   eeprom_base_addr;    // Base address in EEPROM
   
   uint8_t      ain;                 // Arduino analog input number
@@ -47,7 +44,6 @@ private:
                                     // from the average and from zero
   boolean      stable_flag;         // Flags that the gyro reading is stable
   float        rad_per_sec;         // Gyro reading converted to rad/sec units
-  float        smoothed_rad_per_sec;// Gyro reading, smoothed with low-pass filter
 
 public:
   //============================= Constructor ===================================
@@ -76,16 +72,14 @@ public:
   //=================================== set_*() =================================
   //
 
-  static void set_smooth_factor(float smooth_factor);
+  // Nothing
   
   //=================================== get_*() =================================
   //
 
-  static float     get_smooth_factor(void)        {return smooth_factor;}
   uint16_t         get_raw(void)                  {return raw;};
   uint16_t         get_raw_zero(void)             {return raw_zero;};
   float            get_rad_per_sec(void)          {return rad_per_sec;};
-  float            get_smoothed_rad_per_sec(void) {return smoothed_rad_per_sec;};
   volatile boolean is_stable(void)                {return stable_flag;};
 
   //============================= print_stats() =================================
@@ -100,10 +94,8 @@ public:
   // defaults.
 
   static
-  int                         // Ret: Next address in EEPROM
-  read_eeprom(
-    int   eeprom_base_addr_in,// In: Base address in EEPROM
-    float smooth_factor);     // Smooting factor, used in 1-pole IIR LPF
+  int                                      // Ret: Next address in EEPROM
+  read_eeprom(int   eeprom_base_addr_in);  // In: Base address in EEPROM
 
   //============================== write_eeprom() =============================
   //
