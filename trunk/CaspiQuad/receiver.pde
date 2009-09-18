@@ -739,7 +739,7 @@ ReceiverThrottle::calculate_throttle_motor_factor(void)
 
 //=========================== get_throttle() ==================================
 //
-// Get the throttle value, normalized to motor command range
+// Get the throttle value, normalized to motor throttle range
 
 int16_t                        // Ret: normalized data
 ReceiverThrottle::get_throttle(void)
@@ -762,11 +762,11 @@ ReceiverThrottle::get_throttle(void)
   
     ret_val = ((uint16_t)((uint16_t)throttle_diff << RECEIVER_THROTTLE_RANGE_SHIFT) / 
                                                         throttle_motor_range_factor) +
-              (uint16_t)MOTOR_THROTTLE_MIN;
+              (uint16_t)MOTOR_THROTTLE_IDLE;
   }
   
   else
-    ret_val = MOTOR_THROTTLE_MIN;
+    ret_val = MOTOR_THROTTLE_IDLE;
 
   
 #if PRINT_RECEIVER_THROTTLE

@@ -44,7 +44,7 @@
 
 // Derived Definitions in Volts
 
-#define GYRO_RANGE_V (GYRO_RANGE_DEG_PER_SEC * GYRO_SENS_V_PER_DEG_PER_SEC)
+#define GYRO_RANGE_V                (GYRO_RANGE_DEG_PER_SEC * GYRO_SENS_V_PER_DEG_PER_SEC)
 
 // Derived Definitions in Radians
 
@@ -69,8 +69,8 @@
                                          // deviate from zero and still be
                                          // zero if stable.
 #define GYRO_LONG_AVG_FACTOR        6    // Determines the averaging period. For
-                                         // 20 msec rate this is 2^6 * 20 which
-                                         // is a little more than 1 sec.
+                                         // 10 msec rate this is 2^6 * 10 which
+                                         // is a little more than 0.5 sec.
 #define GYRO_REST_MSEC_MIN       2000    // Time (in msec the) gyro must be
                                          // at rest to flag a stable condition
 #define GYRO_REST_CYCLES_MIN     (GYRO_REST_MSEC_MIN / CONTROL_LOOP_CYCLE_MSEC)

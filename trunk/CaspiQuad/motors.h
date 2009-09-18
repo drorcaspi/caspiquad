@@ -51,14 +51,27 @@
 #define MOTOR_COMMAND_MAX     ((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
 #define MOTOR_COMMAND_MIN     ((uint32_t)((uint32_t)MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
 
+// Top and idle value define a range with some guard bands allowing room for
+// varying the actual motor command to control rotation in 3 axis
+
+#define MOTOR_COMMAND_TOP     (MOTOR_COMMAND_MAX - 20)
+#define MOTOR_COMMAND_IDLE    (MOTOR_COMMAND_MIN + 10)
+
 // Maximum, minimum and range values of throttle input to motors_command().
 // A shift factor of 2 (multiply by 4) is used to reduce rounding errors,
 // since actual motor command is calculated by adding 4 variable.
 
 #define MOTOR_THROTTLE_FACTOR 2
-#define MOTOR_THROTTLE_MAX    (MOTOR_COMMAND_MAX << MOTOR_THROTTLE_FACTOR)
-#define MOTOR_THROTTLE_MIN    (MOTOR_COMMAND_MIN << MOTOR_THROTTLE_FACTOR)
-#define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_MAX - MOTOR_THROTTLE_MIN + 1)
+#define MOTOR_THROTTLE_MAX    (MOTOR_COMMAND_MAX  << MOTOR_THROTTLE_FACTOR)
+#define MOTOR_THROTTLE_MIN    (MOTOR_COMMAND_MIN  << MOTOR_THROTTLE_FACTOR)
+
+// Top and idle value define a range with some guard bands allowing room for
+// varying the actual motor command to control rotation in 3 axis.  Throttle
+// input to motors_command() should be within this range
+
+#define MOTOR_THROTTLE_TOP    (MOTOR_COMMAND_TOP  << MOTOR_THROTTLE_FACTOR)
+#define MOTOR_THROTTLE_IDLE   (MOTOR_COMMAND_IDLE << MOTOR_THROTTLE_FACTOR)
+#define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_TOP - MOTOR_THROTTLE_IDLE + 1)
 
 // Maximum, minimum and range values of rotation (pitch, roll, yaw) rate input
 
