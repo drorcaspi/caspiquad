@@ -35,8 +35,6 @@
 //
 //=============================================================================
 
-#define MOTOR_THROTTLE_IDLE       (MOTOR_THROTTLE_MIN  +            \
-                                   (10 << MOTOR_THROTTLE_FACTOR))
 #define MOTOR_THROTTLE_IDLE_RANGE (10 << MOTOR_THROTTLE_FACTOR)
 
 
@@ -134,11 +132,13 @@ motors_command(
     }
 
     else
+    {
       throttle_limit = (int16_t)MOTOR_THROTTLE_MAX;
+
+      if (throttle > (int16_t)MOTOR_THROTTLE_TOP)
+        throttle = MOTOR_THROTTLE_TOP;
+    };
     
-    throttle   = constrain(throttle,
-                           (int16_t)MOTOR_THROTTLE_MIN,
-                           (int16_t)MOTOR_THROTTLE_MAX);
     roll_rate  = constrain(roll_rate,
                            (int16_t)MOTOR_ROTATION_RATE_MIN,
                            (int16_t)MOTOR_ROTATION_RATE_MAX);
