@@ -182,9 +182,17 @@ private:
   uint16_t     raw_min;             // Raw receiver reading at minimum
   uint16_t     raw_max;             // Raw receiver reading at maximum
   uint16_t     raw_stable;          // Candidate for stable throttle reading
-  uint16_t     throttle_motor_range_factor;
-                                    // Factor for scaling throttle command from
-                                    // the receiver to motor throttle command
+
+  // For converting receiver reading to motor throttle command, we calculate
+  // 3 ranges.  Thus, we need 2 thresholds and 3 slopes.
+  
+  uint16_t     raw_threshold1;
+  uint16_t     raw_threshold2;
+
+  uint16_t     motor_throttle_slope1;
+  uint16_t     motor_throttle_slope2;
+  uint16_t     motor_throttle_slope3;
+  
   uint8_t      cycle_counter;       // Count the number of cycles
 
 
@@ -241,6 +249,8 @@ public:
   //=========================== get_throttle() ==================================
   //
   // Get the throttle value, normalized to motor command range
+  // The translation is not linear; to get better control in the useful range, we
+  // divide the throttle range into 3 sections.
 
   int16_t                        // Ret: normalized data
   get_throttle(void);

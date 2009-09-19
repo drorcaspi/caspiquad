@@ -102,11 +102,34 @@
 #define RECEIVER_LOW_THRESHOLD  (1200 / RECEIVER_TICK)
 #define RECEIVER_HIGH_THRESHOLD (1800 / RECEIVER_TICK)
 
+//-----------------------------------------------------------------------------
+//
+// Throttle Definitions
+// ====================
+//
+// Throttle input from the receiver is translated to motor throttle command,
+// using 3 ranges to provide better sensitivity in the middle.
+//
+//-----------------------------------------------------------------------------
+
 // Range and factor used in throttle range to motor range conversion.
 // Intended to avoid rounding errors in calculations
 
-#define RECEIVER_THROTTLE_RANGE_MAX    1023  // 2^10 - 1
-#define RECEIVER_THROTTLE_RANGE_SHIFT     6  // Result still fits in uint16_t
+#define RECEIVER_THROTTLE_RANGE_MAX   1023  // 2^10 - 1
+
+// Divide the throttle command, as input to the motor control, to 3 ranges.
+// Thresholds at 35% and 65%
+
+#define MOTOR_THROTTLE_THRESHOLD1     (MOTOR_THROTTLE_IDLE + ((MOTOR_THROTTLE_RANGE * 35) / 100))
+#define MOTOR_THROTTLE_THRESHOLD2     (MOTOR_THROTTLE_IDLE + ((MOTOR_THROTTLE_RANGE * 65) / 100))
+
+#define MOTOR_THROTTLE_RANGE1         (MOTOR_THROTTLE_THRESHOLD1 - MOTOR_THROTTLE_IDLE)
+#define MOTOR_THROTTLE_RANGE2         (MOTOR_THROTTLE_THRESHOLD2 - MOTOR_THROTTLE_THRESHOLD1)
+#define MOTOR_THROTTLE_RANGE3         (MOTOR_THROTTLE_TOP        - MOTOR_THROTTLE_THRESHOLD2)
+
+// Shift factor used in calculations, to minimize roundoff errors
+
+#define RECEIVER_THROTTLE_SLOPE_SHIFT 5  // Result still fits in uint16_t
 
 
 //=============================================================================
@@ -725,57 +748,166 @@ ReceiverThrottle::calculate_throttle_motor_factor(void)
   uint16_t throttle_range;
 
 
-  throttle_range = raw_max - raw_min + 1;
+  throttle_range = raw_max - raw_min;
   
   // Make sure the diff is within the nominal range
 
   if (throttle_range > (uint16_t)RECEIVER_THROTTLE_RANGE_MAX)
     throttle_range = RECEIVER_THROTTLE_RANGE_MAX;
-  throttle_motor_range_factor =
-    (uint16_t)(throttle_range << RECEIVER_THROTTLE_RANGE_SHIFT) /
-                                                (uint16_t)MOTOR_THROTTLE_RANGE;
+
+  // Calculate the two thresholds of the received throttle
+  
+  raw_threshold1 = raw_min + (throttle_range >> 2);
+  raw_threshold2 = raw_max - (throttle_range >> 2);
+
+  // Calculate the slopes of the 3 ranges.
+
+// Compile-time sanity check: make sure we do not have an overflow in the calculation
+
+#if ((MOTOR_THROTTLE_RANGE1 >= (0x10000ul >> RECEIVER_THROTTLE_SLOPE_SHIFT))  || \
+     (MOTOR_THROTTLE_RANGE2 >= (0x10000ul >> RECEIVER_THROTTLE_SLOPE_SHIFT))  || \
+     (MOTOR_THROTTLE_RANGE3 >= (0x10000ul >> RECEIVER_THROTTLE_SLOPE_SHIFT)))
+#error RECEIVER_THROTTLE_SLOPE_SHIFT is too large
+#endif
+
+  motor_throttle_slope1 =
+    (uint16_t)(MOTOR_THROTTLE_RANGE1 << RECEIVER_THROTTLE_SLOPE_SHIFT) / (uint16_t)(raw_threshold1 - raw_min);
+  motor_throttle_slope2 =
+    (uint16_t)(MOTOR_THROTTLE_RANGE2 << RECEIVER_THROTTLE_SLOPE_SHIFT) / (uint16_t)(raw_threshold2 - raw_threshold1);
+  motor_throttle_slope3 =
+    (uint16_t)(MOTOR_THROTTLE_RANGE3 << RECEIVER_THROTTLE_SLOPE_SHIFT) / (uint16_t)(raw_max - raw_threshold2);
+
+// The following definition are used for later compile-time checking of overflow
+
+#if (MOTOR_THROTTLE_RANGE1 > MOTOR_THROTTLE_RANGE2)
+#define MOTOR_THROTTLE_RANGE_MAX MOTOR_THROTTLE_RANGE1
+#else
+#define MOTOR_THROTTLE_RANGE_MAX MOTOR_THROTTLE_RANGE2
+#endif
+#if (MOTOR_THROTTLE_RANGE3 > MOTOR_THROTTLE_MAX)
+#define MOTOR_THROTTLE_RANGE_MAX MOTOR_THROTTLE_RANGE3
+#endif
+#define RECEIVER_THROTTLE_RANGE_MIN ((RECEIVER_HIGH_THRESHOLD - RECEIVER_LOW_THRESHOLD) >> 2)
+#define MOTOR_THROTTLE_SLOPE_MAX    (MOTOR_THROTTLE_RANGE_MAX / RECEIVER_THROTTLE_RANGE_MIN)
+
+#if PRINT_RECEIVER_THROTTLE
+  Serial.print("Thr. thresholds\t");
+  Serial.print(raw_min, DEC);
+  Serial.print("\t");
+  Serial.print(raw_threshold1, DEC);
+  Serial.print("\t");
+  Serial.print(raw_threshold2, DEC);
+  Serial.print("\t");
+  Serial.println(raw_max, DEC);
+
+  Serial.print("Thr. slopes\t");
+  Serial.print(motor_throttle_slope1, DEC);
+  Serial.print("\t");
+  Serial.print(motor_throttle_slope2, DEC);
+  Serial.print("\t");
+  Serial.println(motor_throttle_slope3, DEC);
+#endif
 }
 
 
 //=========================== get_throttle() ==================================
 //
 // Get the throttle value, normalized to motor throttle range
+// The translation is not linear; to get better control in the useful range, we
+// divide the throttle range into 3 sections.
 
 int16_t                        // Ret: normalized data
 ReceiverThrottle::get_throttle(void)
 
 {
-  int16_t throttle_diff;
-  int16_t ret_val;
+  int16_t   throttle_diff;
+  uint16_t  motor_throttle;
+  uint16_t  raw;
 
-  
+
+// Compile-time sanity check: make sure we do not have an overflow in the calculation
+
+#if ((MOTOR_THROTTLE_SLOPE_MAX * (RECEIVER_THROTTLE_RANGE_MAX / 2)) > 0xFFFFul)
+#error MOTOR_THROTTLE_SLOPE_MAX is too large
+#endif
+
   if (receiver_get_status())
   {
-    throttle_diff = receiver_get_current_raw(THROTTLE_CH)  - raw_min;
+    raw = receiver_get_current_raw(THROTTLE_CH);
 
-    // Make sure the diff is within the nominal range
+    throttle_diff = raw - raw_threshold2;
     
-    if (throttle_diff < 0)
-      throttle_diff = 0;
-    else if (throttle_diff > (int16_t)RECEIVER_THROTTLE_RANGE_MAX)
-      throttle_diff = RECEIVER_THROTTLE_RANGE_MAX;
-  
-    ret_val = ((uint16_t)((uint16_t)throttle_diff << RECEIVER_THROTTLE_RANGE_SHIFT) / 
-                                                        throttle_motor_range_factor) +
-              (uint16_t)MOTOR_THROTTLE_IDLE;
+    if (throttle_diff >= 0)
+    {
+      // We're in the upper range
+      
+      if (throttle_diff > (int16_t)RECEIVER_THROTTLE_RANGE_MAX)
+        throttle_diff = RECEIVER_THROTTLE_RANGE_MAX;
+      
+      motor_throttle = motor_throttle_slope3 * (uint16_t)throttle_diff;
+      motor_throttle >>= RECEIVER_THROTTLE_SLOPE_SHIFT;
+      motor_throttle += (uint16_t)MOTOR_THROTTLE_THRESHOLD2;
+
+      if (motor_throttle > (uint16_t)MOTOR_THROTTLE_TOP)
+        motor_throttle = MOTOR_THROTTLE_TOP;
+    }
+
+    else
+    {
+      throttle_diff = raw - raw_threshold1;
+      
+      if (throttle_diff >= 0)
+      {
+        // We're in the middle range
+        
+        if (throttle_diff > (int16_t)RECEIVER_THROTTLE_RANGE_MAX)
+          throttle_diff = RECEIVER_THROTTLE_RANGE_MAX;
+        
+        motor_throttle = motor_throttle_slope2 * (uint16_t)throttle_diff;
+        motor_throttle >>= RECEIVER_THROTTLE_SLOPE_SHIFT;
+        motor_throttle += (uint16_t)MOTOR_THROTTLE_THRESHOLD1;
+
+        if (motor_throttle > (uint16_t)MOTOR_THROTTLE_THRESHOLD2)
+          motor_throttle = MOTOR_THROTTLE_THRESHOLD2;
+      }
+
+      else
+      {
+        // We're in the lower range
+        
+        throttle_diff = raw - raw_min;
+        
+        if (throttle_diff > 0)
+        {
+          if (throttle_diff > (int16_t)RECEIVER_THROTTLE_RANGE_MAX)
+            throttle_diff = RECEIVER_THROTTLE_RANGE_MAX;
+          
+          motor_throttle = motor_throttle_slope1 * (uint16_t)throttle_diff;
+          motor_throttle >>= RECEIVER_THROTTLE_SLOPE_SHIFT;
+        }
+        
+        else
+          motor_throttle = 0;
+        
+        motor_throttle += (uint16_t)MOTOR_THROTTLE_IDLE;
+
+        if (motor_throttle > (uint16_t)MOTOR_THROTTLE_THRESHOLD1)
+          motor_throttle = MOTOR_THROTTLE_THRESHOLD1;
+      }
+    }
   }
   
   else
-    ret_val = MOTOR_THROTTLE_IDLE;
+    motor_throttle = MOTOR_THROTTLE_IDLE;
 
   
 #if PRINT_RECEIVER_THROTTLE
   Serial.print(THROTTLE_CH, DEC);
   Serial.print("\t");
-  Serial.println(ret_val, DEC);
+  Serial.println(motor_throttle, DEC);
 #endif
 
-  return ret_val;
+  return (int16_t)motor_throttle;
 }
 
 

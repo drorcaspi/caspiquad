@@ -28,8 +28,8 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
-#define MOTORS_PWM_FREQ_HZ    488
-#define MOTORS_PWM_CYCLE_USEC (1000000 / MOTORS_PWM_FREQ_HZ)
+#define MOTORS_PWM_FREQ_HZ     488
+#define MOTORS_PWM_CYCLE_USEC 2049  // (1000000 / MOTORS_PWM_FREQ_HZ)
 
 //-----------------------------------------------------------------------------
 //
@@ -48,8 +48,8 @@
 // width range as defined above
 
 #define MOTOR_COMMAND_RANGE   256
-#define MOTOR_COMMAND_MAX     ((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
-#define MOTOR_COMMAND_MIN     ((uint32_t)((uint32_t)MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
+#define MOTOR_COMMAND_MAX     224  // ((uint32_t)((uint32_t)MOTORS_PW_MAX_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
+#define MOTOR_COMMAND_MIN      99  // ((uint32_t)((uint32_t)MOTORS_PW_MIN_USEC * MOTOR_COMMAND_RANGE) / MOTORS_PWM_CYCLE_USEC)
 
 // Top and idle value define a range with some guard bands allowing room for
 // varying the actual motor command to control rotation in 3 axis
