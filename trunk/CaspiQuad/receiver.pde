@@ -54,7 +54,7 @@
 
 // Shift factor for averaging receiver pulse width readings
 
-#define RECEIVER_AVG_SHIFT                   3
+#define RECEIVER_AVG_SHIFT                   2
 
 //-----------------------------------------------------------------------------
 // Receiver rest state determination
