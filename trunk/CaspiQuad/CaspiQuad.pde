@@ -229,6 +229,7 @@ void loop()
   
   static uint16_t    setup_cycles                = 0;
   static SetupState  setup_state                 = SETUP_GYROS;
+  static BatStatus   bat_status                  = BAT_OK;
 
   // Local Variables
   
@@ -244,7 +245,7 @@ void loop()
   float              rot_rate_error[NUM_ROTATIONS];   // (rad/sec)
   uint8_t            rot;                             // Rotation index
   boolean            receiver_ok;
-  BatStatus          bat_status;
+  BatStatus          new_bat_status;
   
 
   //---------------------------------------------------------------------------
@@ -305,14 +306,18 @@ void loop()
   indicators_update();
 
   // Get the battery status and indicate
-  
-  bat_status = bat_sensor_get();
+  // We only allow bat_status to get worse
 
-  if (bat_status == BAT_LOW)
-    indicators_set(IND_BAT_LOW);
-  
-  else if (bat_status == BAT_WARN)
+  new_bat_status = bat_sensor_get();
+
+  if (new_bat_status > bat_status)
+  {
+    bat_status = new_bat_status;
+    if (new_bat_status == BAT_LOW)
+      indicators_set(IND_BAT_LOW);
+    else
       indicators_set(IND_BAT_WARN);
+  }
   
   receiver_update_status();
 
