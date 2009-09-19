@@ -34,7 +34,11 @@
 //
 //=============================================================================
 
-#define ADC_CYCLE_USEC 1024
+#define ADC_CYCLE_USEC   1024   // ADC sampling cycle
+
+#define ADC_SMOOTH_SHIFT    6   // Shift factor used in smooting the ADC data
+#define ADC_GAIN_SHIFT      ADC_SMOOTH_SHIFT
+#define ADC_GAIN            (1 << ADC_GAIN_SHIFT)
 
 
 //=============================================================================
@@ -62,11 +66,20 @@ void adc_init(void);
 
 //=========================== adc_get_data() ==================================
 //
-// Get the data of a single ADC channel
+// Get the data of a single ADC channel, with ADC_GAIN over the sampled value 
 //
 
 uint16_t                   // Ret: ADC data
 adc_get_data(uint8_t ch);  // In : ADC channel
+
+
+//======================= adc_get_data_no_gain() ==============================
+//
+// Get the data of a single ADC channel, with no gain
+//
+
+uint16_t                           // Ret: ADC data
+adc_get_data_no_gain(uint8_t ch);  // In : ADC channel
 
 
 //=========================== adc_print_stats() ===============================

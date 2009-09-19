@@ -36,7 +36,6 @@
 
 #define NUM_ADC_CH 4
 
-#define ADC_SMOOTH_SHIFT 6
 
 //=============================================================================
 //
@@ -97,13 +96,43 @@ void adc_init()
 }
 
 
-//=========================== adc_get_data() ===================================
+//=========================== adc_get_data() ==================================
 //
-// Get the data of a single ADC channel
+// Get the data of a single ADC channel, with ADC_GAIN over the sampled value 
 //
 
 uint16_t                  // Ret: ADC data
 adc_get_data(uint8_t ch)  // In : ADC channel
+
+{
+  uint16_t data;
+  uint8_t  old_sreg;
+
+
+  // Save the interrupt status and disable interrupts.
+  // This is required to assure consistent reading of the data (that may change
+  // during multi-byte reads)
+  
+  old_sreg = SREG;
+  cli();
+
+  data = adc_data[ch];
+
+  // Restore the interrupt status
+  
+  SREG = old_sreg;
+
+  return data;
+}
+
+
+//======================= adc_get_data_no_gain() ==============================
+//
+// Get the data of a single ADC channel, with no gain
+//
+
+uint16_t                           // Ret: ADC data
+adc_get_data_no_gain(uint8_t ch)   // In : ADC channel
 
 {
   uint16_t data;
