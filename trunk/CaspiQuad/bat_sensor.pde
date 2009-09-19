@@ -78,7 +78,7 @@ bat_sensor_get(void)
   BatStatus status;
 
 
-  sense = adc_get_data(BAT_SENSOR_PIN);
+  sense = adc_get_data_no_gain(BAT_SENSOR_PIN);
 
 #if PRINT_BAT_SENSOR
   Serial.print("Bat: ");

@@ -37,8 +37,8 @@ private:
   
   uint8_t      ain;                 // Arduino analog input number
   uint8_t      cycle_counter;       // Count the number of cycles
-  uint16_t     raw;                 // Raw gyro reading
-  uint16_t     raw_zero;            // Raw gyro reading at zero G
+  uint16_t     raw;                 // Raw gyro reading (in units of ADC_GAIN)
+  uint16_t     raw_zero;            // Raw gyro reading at zero G (in units of ADC_GAIN)
   uint16_t     raw_avg;             // Average of raw readings
   uint8_t      last_unstable_cycle; // Last cycle when the reading was too far
                                     // from the average and from zero
@@ -77,10 +77,10 @@ public:
   //=================================== get_*() =================================
   //
 
-  uint16_t         get_raw(void)                  {return raw;};
-  uint16_t         get_raw_zero(void)             {return raw_zero;};
-  float            get_rad_per_sec(void)          {return rad_per_sec;};
-  volatile boolean is_stable(void)                {return stable_flag;};
+  uint16_t         get_raw(void)          {return raw >> ADC_GAIN_SHIFT;};
+  uint16_t         get_raw_zero(void)     {return raw_zero >> ADC_GAIN_SHIFT;};
+  float            get_rad_per_sec(void)  {return rad_per_sec;};
+  volatile boolean is_stable(void)        {return stable_flag;};
 
   //============================= print_stats() =================================
   //

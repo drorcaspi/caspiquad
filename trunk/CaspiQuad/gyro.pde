@@ -62,7 +62,7 @@
 //
 // Gyro rest state determination
 
-#define GYRO_REST_AVG_DEV_MAX       2    // How much the gyro reading can
+#define GYRO_REST_AVG_DEV_MAX       1    // How much the gyro reading can
                                          // deviate from the long-term average
                                          // and still be considered stable.
 #define GYRO_REST_ZERO_DEV_MAX    100    // How much the gyro reading can
@@ -96,8 +96,8 @@ Gyro::Gyro(void)
 
 {
   cycle_counter = 0;
-  raw_zero = (uint16_t)GYRO_ZERO;
-  raw = (uint16_t)GYRO_ZERO;
+  raw_zero = (uint16_t)(GYRO_ZERO * ADC_GAIN);
+  raw = (uint16_t)(GYRO_ZERO * ADC_GAIN);
   raw_avg = (uint16_t)GYRO_ZERO << GYRO_LONG_AVG_FACTOR;
   last_unstable_cycle = 0;
   stable_flag = false;
@@ -129,23 +129,28 @@ Gyro::update(void)
   int16_t avg_diff;
   int16_t zero_diff;
 
+
+  // Read the gyro input.  Note the reading has a gain of ADC_GAIN over the
+  // original range.
   
   raw = adc_get_data(ain);
 
   // Calculate long-term average, in units of (1 << GYRO_LONG_AVG_FACTOR)
 
-  avg_diff = (int16_t)(raw - (raw_avg >> GYRO_LONG_AVG_FACTOR));
+  avg_diff = (int16_t)((raw >> ADC_GAIN_SHIFT) - (raw_avg >> GYRO_LONG_AVG_FACTOR));
   raw_avg += avg_diff;
 
+  // Calculate the difference from the zero point, in units of ADC_GAIN
+  
   zero_diff = (int16_t)(raw - raw_zero);
   
   // To be stable, the current reading must not deviate from average too much.
   // It also must not deviate from zero too much.
-  
-  if ((avg_diff > (int16_t)GYRO_REST_AVG_DEV_MAX)    ||
-      (avg_diff < (int16_t)-GYRO_REST_AVG_DEV_MAX)   ||
-      (zero_diff > (int16_t)GYRO_REST_ZERO_DEV_MAX)  ||
-      (zero_diff < (int16_t)-GYRO_REST_ZERO_DEV_MAX)
+
+  if ((avg_diff > (int16_t)GYRO_REST_AVG_DEV_MAX)                 ||
+      (avg_diff < (int16_t)-GYRO_REST_AVG_DEV_MAX)                ||
+      (zero_diff > (int16_t)(GYRO_REST_ZERO_DEV_MAX * ADC_GAIN))  ||
+      (zero_diff < (int16_t)(-GYRO_REST_ZERO_DEV_MAX * ADC_GAIN))
      )
   {
     // Not stable
@@ -161,9 +166,9 @@ Gyro::update(void)
     stable_flag = true;
   }
   
-  // Convert to rad/sec
+  // Convert to rad/sec.
   
-  rad_per_sec = (float)zero_diff / (float)GYRO_SENS_PER_RAD_PER_SEC;
+  rad_per_sec = (float)zero_diff / ((float)GYRO_SENS_PER_RAD_PER_SEC * (float)ADC_GAIN);
 
   cycle_counter++;
 };
@@ -176,7 +181,7 @@ Gyro::update(void)
 void Gyro::zero(void)
 
 {
-  raw_zero = raw_avg >> GYRO_LONG_AVG_FACTOR;
+  raw_zero = raw_avg >> (GYRO_LONG_AVG_FACTOR - ADC_GAIN_SHIFT);
 };
 
 
@@ -189,11 +194,11 @@ void
 Gyro::print_stats(void)
 
 {
-   Serial.print(raw, DEC);
+   Serial.print(raw >> ADC_GAIN_SHIFT, DEC);
    Serial.print("\t");
    Serial.print(raw_avg >> GYRO_LONG_AVG_FACTOR, DEC);
    Serial.print("\t");
-   Serial.print(raw_zero, DEC);
+   Serial.print(raw_zero >> ADC_GAIN_SHIFT, DEC);
    Serial.print("\t");
    Serial.print(rad_per_sec);
    Serial.print("\t");
