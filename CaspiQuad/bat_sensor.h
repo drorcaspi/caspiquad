@@ -37,9 +37,9 @@
 
 typedef enum
 {
-  BAT_OK,
-  BAT_WARN,
-  BAT_LOW
+  BAT_OK    = 0,
+  BAT_WARN  = 1,
+  BAT_LOW   = 2
 } BatStatus;
 
 

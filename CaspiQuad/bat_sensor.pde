@@ -42,10 +42,10 @@
 
 // Derived Definitions in Numbers
 
-#define BAT_SENSOR_NO_BAT              169
-#define BAT_SENSOR_ONE_BAT             500
-#define BAT_SENSOR_WARN_THR            707
-#define BAT_SENSOR_LOW_THR             658
+#define BAT_SENSOR_NO_BAT              200
+#define BAT_SENSOR_ONE_BAT             400
+#define BAT_SENSOR_WARN_THR            750
+#define BAT_SENSOR_LOW_THR             720
 
 
 //=============================================================================
@@ -85,7 +85,7 @@ bat_sensor_get(void)
   Serial.println(sense, DEC);
 #endif
 
-#if 0
+#if 1
   if ((sense > BAT_SENSOR_WARN_THR) || (sense < BAT_SENSOR_ONE_BAT))
     status = BAT_OK;
   else if (sense > BAT_SENSOR_LOW_THR)
