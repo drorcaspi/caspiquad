@@ -212,6 +212,10 @@ void setup()
   };
 
   indicators_set(IND_SETUP);
+
+  delay(1000);  // 1 second delay before we start.  Allows things such as
+                // battery monitor, various filters to stabilize.
+  
   //last_msec = adc_cycles;
   last_msec = millis();
 }
