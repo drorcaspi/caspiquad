@@ -78,31 +78,43 @@
 
 // Directions
 
-#define FRONT            0
-#define REAR             1
-#define RIGHT            2
-#define LEFT             3
-#define NUM_DIRECTIONS   4
+typedef enum
+{
+  FRONT            = 0,
+  REAR             = 1,
+  RIGHT            = 2,
+  LEFT             = 3,
+  NUM_DIRECTIONS   = 4
+} Directions;
+
 #define FIRST_DIRECTION  FRONT
 
 // Axis
 
-#define X_AXIS           0   // Positive forward, through nose of aircraft
-#define Y_AXIS           1   // Positive to Right of X Axis
-#define Z_AXIS           2   // Positive downwards
-#define NUM_AXIS         3
+typedef enum
+{
+  X_AXIS           = 0,   // Positive forward, through nose of aircraft
+  Y_AXIS           = 1,   // Positive to Right of X Axis
+  Z_AXIS           = 2,   // Positive downwards
+  NUM_AXIS         = 3
+} Axes;
+
 #define FIRST_AXIS       X_AXIS
 
 // Rotations
 
-#define ROLL             0   // Angle of Y Body Axis (wing) relative to horizon.
-                             // Also a positive (right wing down) rotation about
-                             // X Axis.
-#define PITCH            1   // Angle of X Body Axis (nose) relative to horizon.
-                             // Also a positive (nose up) rotation about Y Axis.
-#define YAW              2   // Angle of X Body Axis (nose) relative to North.
-                             // Also a positive (nose right) rotation about Z Axis.
-#define NUM_ROTATIONS    3
+typedef enum
+{
+  ROLL             = 0,   // Angle of Y Body Axis (wing) relative to horizon.
+                          // Also a positive (right wing down) rotation about
+                          // X Axis.
+  PITCH            = 1,   // Angle of X Body Axis (nose) relative to horizon.
+                          // Also a positive (nose up) rotation about Y Axis.
+  YAW              = 2,   // Angle of X Body Axis (nose) relative to North.
+                          // Also a positive (nose right) rotation about Z Axis.
+  NUM_ROTATIONS    = 3
+} Rotations;
+
 #define FIRST_ROTATION   ROLL
 
 
