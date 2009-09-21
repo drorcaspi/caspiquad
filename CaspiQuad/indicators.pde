@@ -36,8 +36,12 @@
 //=============================================================================
 
 #define INDICATOR_TICK_MSEC  100
-#define PATTERN_REPEAT       ((uint8_t)-1)
-#define PATTERN_ONCE         ((uint8_t)-2)
+
+// Indicator pattern headers
+
+#define PATTERN_PERMANENT    ((uint8_t)-3)   // Permanent repeated pattern
+#define PATTERN_REPEAT       ((uint8_t)-2)   // Repeated pattern
+#define PATTERN_ONCE         ((uint8_t)-1)   // One-time pattern
 #define PATTERN_END          ((uint8_t) 0)
 
 //=============================================================================
@@ -143,18 +147,18 @@ static const uint8_t        flight_led_pattern[]      = {
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_warn_led_pattern[]    = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           1, 9,
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_low_led_pattern[]     = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           1, 1,
                                                           1, 3,
                                                           PATTERN_END
                                                         };
 static const uint8_t        hw_err_led_pattern[]      = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           1, 1,
                                                           PATTERN_END
                                                         };
@@ -167,7 +171,7 @@ static const uint8_t        sw_warn_led_pattern[]     = {
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_err_led_pattern[]      = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           2, 2,
                                                           PATTERN_END
                                                         };
@@ -228,18 +232,18 @@ static const uint8_t        arming_buz_pattern[]      = {
                                                         };
 static const uint8_t        flight_buz_pattern[]      = {PATTERN_END};
 static const uint8_t        bat_warn_buz_pattern[]    = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           1, 9,
                                                           PATTERN_END
                                                         };
 static const uint8_t        bat_low_buz_pattern[]     = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           1, 1,
                                                           1, 3,
                                                           PATTERN_END
                                                         };
 static const uint8_t        hw_err_buz_pattern[]      = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           1, 1,
                                                           PATTERN_END
                                                         };
@@ -252,7 +256,7 @@ static const uint8_t        sw_warn_buz_pattern[]     = {
                                                           PATTERN_END
                                                         };
 static const uint8_t        sw_err_buz_pattern[]      = {
-                                                          PATTERN_REPEAT,
+                                                          PATTERN_PERMANENT,
                                                           2, 2,
                                                           PATTERN_END
                                                         };
@@ -388,19 +392,24 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
 
 {
   const uint8_t *p_pattern;
+  uint8_t        pattern_mode;
 
 
-  if (status_in == IND_NONE)
+  p_pattern = p_patterns[status_in];
+  pattern_mode = p_pattern[0];
+
+  if ((p_patterns[status][0] != PATTERN_PERMANENT)  ||
+      (pattern_mode          == PATTERN_PERMANENT))
   {
-    status = IND_NONE;
-    temp_status = IND_NONE;
-  }
+    // Only a permanent pattern can update a permanent pattern
+    
+    if (status_in == IND_NONE)
+    {
+      status = IND_NONE;
+      temp_status = IND_NONE;
+    }
 
-  else
-  {
-    p_pattern = p_patterns[status_in];
-
-    if (p_pattern[0] == PATTERN_END)
+    else if (pattern_mode == PATTERN_END)
     {
       // PATTERN_END at the start of the pattern means no status indication
 
@@ -415,7 +424,7 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
     {
       // Set the beginning of a new pattern (either temporary or not)
       
-      if (p_pattern[0] == PATTERN_ONCE)
+      if (pattern_mode == PATTERN_ONCE)
         temp_status = status_in;
   
       else
@@ -429,7 +438,6 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
       digitalWrite(pin, 1);
     }
   }
-
 #if PRINT_INDICATORS
   Serial.print(pin, DEC);
   Serial.print("\t");
@@ -441,7 +449,6 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
   Serial.print("\t");
   Serial.println(cycle_counter, DEC);
 #endif
-  
 };
 
 
