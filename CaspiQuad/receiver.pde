@@ -104,11 +104,24 @@
 
 //-----------------------------------------------------------------------------
 //
-// Throttle Definitions
-// ====================
+// Receiver Rotation Definitions
+// =============================
+//
+// Rotation input from the receiver is translated to rotation rate command,
+// by centering and using 2 ranges to provide finer control in the middle.
+//
+//-----------------------------------------------------------------------------
+
+#define RECEIVER_ROTATION_THRESHOLD0  4 
+#define RECEIVER_ROTATION_THRESHOLD1  (RECEIVER_NOM_SWING / 2)
+
+//-----------------------------------------------------------------------------
+//
+// Receiver Throttle Definitions
+// =============================
 //
 // Throttle input from the receiver is translated to motor throttle command,
-// using 3 ranges to provide better sensitivity in the middle.
+// using 3 ranges to provide finer control in the middle.
 //
 //-----------------------------------------------------------------------------
 
@@ -118,10 +131,11 @@
 #define RECEIVER_THROTTLE_RANGE_MAX   1023  // 2^10 - 1
 
 // Divide the throttle command, as input to the motor control, to 3 ranges.
-// Thresholds at 35% and 65%
+// Thresholds at 40% and 70%
+// TODO: the above should be EEPROM parameters
 
-#define MOTOR_THROTTLE_THRESHOLD1     (MOTOR_THROTTLE_IDLE + ((MOTOR_THROTTLE_RANGE * 35) / 100))
-#define MOTOR_THROTTLE_THRESHOLD2     (MOTOR_THROTTLE_IDLE + ((MOTOR_THROTTLE_RANGE * 65) / 100))
+#define MOTOR_THROTTLE_THRESHOLD1     (MOTOR_THROTTLE_IDLE + ((MOTOR_THROTTLE_RANGE * 40) / 100))
+#define MOTOR_THROTTLE_THRESHOLD2     (MOTOR_THROTTLE_IDLE + ((MOTOR_THROTTLE_RANGE * 70) / 100))
 
 #define MOTOR_THROTTLE_RANGE1         (MOTOR_THROTTLE_THRESHOLD1 - MOTOR_THROTTLE_IDLE)
 #define MOTOR_THROTTLE_RANGE2         (MOTOR_THROTTLE_THRESHOLD2 - MOTOR_THROTTLE_THRESHOLD1)
@@ -555,23 +569,58 @@ int16_t                        // Ret: centered data, in units of RECEIVER_TICK
 ReceiverRotation::get_rotation(void)
 
 {
+  int16_t diff;
   int16_t ret_val;
 
   
   if (receiver_get_status())
+  {
+    // Receiver works correctly
+    
     ret_val = receiver_get_current_raw(ch) - raw_zero;
 
+    if ((ret_val < (int16_t) RECEIVER_ROTATION_THRESHOLD0)   &&
+        (ret_val > (int16_t)-RECEIVER_ROTATION_THRESHOLD0))
+    {
+      // A small margin around 0 is considered 0
+      
+      ret_val = 0;
+    }
+
+    else
+    {
+      diff = ret_val - (int16_t)RECEIVER_ROTATION_THRESHOLD1;
+      if (diff > 0)
+      {
+        // Double the slope at the positive edge
+        
+        ret_val += diff;
+      }
+
+      else
+      {
+        diff = ret_val + (int16_t)RECEIVER_ROTATION_THRESHOLD1;
+        if (diff < 0)
+        {
+          // Double the slope at the negative edge
+          ret_val += diff;
+        }
+      }
+    }
+  }
+  
   else
+  {
+    // Receiver does not operate correctly
+    
     ret_val = 0;
+  };
 
 #if PRINT_RECEIVER_ROT
   Serial.print(ch, DEC);
   Serial.print("\t");
   Serial.println(ret_val, DEC);
 #endif
-
-  if ((ret_val < 4) && (ret_val > -4))
-    ret_val = 0;
     
   return ret_val;
 }
