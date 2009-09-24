@@ -39,6 +39,12 @@
 
 #include <Wire.h>
 
+//=============================================================================
+//
+// Local Definitions
+//
+//=============================================================================
+
 //-----------------------------------------------------------------------------
 //
 // LIS302DL Accelerometer Definitions
@@ -58,6 +64,22 @@
 #define LIS302DL_OUT_Y          0x2B
 #define LIS302DL_OUT_Z          0x2D
 
+//-----------------------------------------------------------------------------
+//
+// Rotation Measurement Definitions
+//
+//-----------------------------------------------------------------------------
+
+// Minimum Z accelerometer reading, below which the reading is not considered
+// reiable for rotation calculation
+
+#define ACCEL_ROTATION_MEASURE_RAW_MIN (ACCEL_TYP_1G / 4)
+
+// Absolute acceleration must be close to 1G for taking into account
+
+#define ACCEL_ROTATION_MEASURE_SQ_MAX  ((ACCEL_MAX_1G * 1.1) * (ACCEL_MAX_1G * 1.1))
+#define ACCEL_ROTATION_MEASURE_SQ_MIN  ((ACCEL_MIN_1G * 0.9) * (ACCEL_MIN_1G * 0.9))
+
 
 //=============================================================================
 //
@@ -65,7 +87,7 @@
 //
 //=============================================================================
 
-static int8_t current_accel_data[NUM_AXIS];
+static int8_t current_accel_data[NUM_AXES];
 
 
 //=============================== accel_init() ================================
@@ -102,7 +124,7 @@ accel_init(void)
   // Write CTRL_REG1    
   Wire.beginTransmission(LIS302DL_0_ADDRESS);
   Wire.send(LIS302DL_CTRL_REG1);
-  Wire.send(0x47);    // Device on, 100hz, normal mode, all axis’s enabled,
+  Wire.send(0x47);    // Device on, 100hz, normal mode, all axes enabled,
                       // +/- 2.3G range
   Wire.endTransmission();
 
@@ -110,12 +132,12 @@ accel_init(void)
 };
 
 
-//=============================== accel_read() ================================
+//=============================== accel_update() ==============================
 //
-// Read the accelerometers
+// Update the accelerometers readings from the h/w
 
-uint16_t                                  // Ret: Sum of 3 axis squared
-accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
+void
+accel_update(void)
 
 {
   // Read X
@@ -150,9 +172,45 @@ accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
   {
     current_accel_data[Z_AXIS] = (int8_t)Wire.receive();
   };
-  
-  return accel_get_current(accel_data);
-};
+}
+
+
+//============================ accel_get_rotations() ==========================
+//
+// Get the roll and pitch rotation measurements, based on accelerometer
+// readings
+
+void accel_get_rotations(float rot_rad[2])  // Out: Measured rotation values, in rad
+                                            //      NAN if no valid measurement
+                    
+{
+  int16_t accel_abs_sq;
+
+
+  accel_abs_sq =
+    ((int16_t)current_accel_data[X_AXIS] * (int16_t)current_accel_data[X_AXIS]) + 
+    ((int16_t)current_accel_data[Y_AXIS] * (int16_t)current_accel_data[Y_AXIS]) +
+    ((int16_t)current_accel_data[Z_AXIS] * (int16_t)current_accel_data[Z_AXIS]);
+
+  if ((accel_abs_sq <= (uint16_t)ACCEL_ROTATION_MEASURE_SQ_MAX)  &&  // TODO: change the name
+      (accel_abs_sq >= (uint16_t)ACCEL_ROTATION_MEASURE_SQ_MIN)  &&
+      (current_accel_data[Z_AXIS] >= (int8_t)ACCEL_ROTATION_MEASURE_RAW_MIN))
+
+  {
+    // We only calculate the rotation if:
+    // - Absolute acceleration is about 1G
+    // - Z axis is at least at some minimum (rotation angle not too steep)
+
+    rot_rad[ROLL] = atan2(current_accel_data[Y_AXIS], current_accel_data[Z_AXIS]);
+    rot_rad[PITCH] = atan2(current_accel_data[X_AXIS], current_accel_data[Z_AXIS]);
+  }
+
+  else
+  {
+    rot_rad[ROLL] = NAN;
+    rot_rad[PITCH] = NAN;
+  };
+}
 
 
 //========================== accel_get_current() ==============================
@@ -160,17 +218,13 @@ accel_read(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
 // Get the current accelerometers data (that has been read before from the h/w)
 // This function is intended for reading of telemetry.
 
-uint16_t                                         // Ret: Sum of 3 axis squared
-accel_get_current(int8_t accel_data[NUM_AXIS])   // Out: 3 axis data
+void
+accel_get_current(int8_t accel_data[NUM_AXES])   // Out: 3 axis data
 
 {
   accel_data[X_AXIS] = current_accel_data[X_AXIS];
   accel_data[Y_AXIS] = current_accel_data[Y_AXIS];
   accel_data[Z_AXIS] = current_accel_data[Z_AXIS];
-
-  return ((int16_t)current_accel_data[X_AXIS] * (int16_t)current_accel_data[X_AXIS]) + 
-         ((int16_t)current_accel_data[Y_AXIS] * (int16_t)current_accel_data[Y_AXIS]) +
-         ((int16_t)current_accel_data[Z_AXIS] * (int16_t)current_accel_data[Z_AXIS]);
 };
 
 

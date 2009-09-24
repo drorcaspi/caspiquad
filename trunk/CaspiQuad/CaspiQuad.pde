@@ -51,6 +51,11 @@ typedef enum
   SETUP_ERR                     // Setup error
 } SetupState;
 
+// Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
+// correct (yaw is 0)
+
+#define RECEIVER_YAW_ZERO_MAX  10
+
 
 //=============================================================================
 //
@@ -239,16 +244,16 @@ void loop()
   
   uint8_t            current_msec;
   uint8_t            cycle_msec;
-  int8_t             accel_raw[NUM_AXIS];
-  uint16_t           accel_abs_sq;
-  float              rotation_raw[NUM_ROTATIONS];
-  float              pitch_estimate;                  // (rad)
-  float              roll_estimate;                   // (rad)
-  int16_t            temp_receiver_raw;
-  float              rot_error[NUM_ROTATIONS];        // (rad)
-  float              rot_rate_error[NUM_ROTATIONS];   // (rad/sec)
+  int16_t            receiver_rot_command[NUM_ROTATIONS];
+                          // Rotation command input from the reciever
+  float              rot_measurement[NUM_ROTATIONS];
+                          // Rotations, as measured by the accelerometers (rad)
+  float              rot_estimate;
+                          // Rotation, as estimated based on gyro and
+                          // accelerometer measurements (rad)
+  //float              rot_error[NUM_ROTATIONS];        // (rad)
+  float              rot_rate_error;   // (rad/sec)
   uint8_t            rot;                             // Rotation index
-  boolean            receiver_ok;
   BatStatus          new_bat_status;
   
 
@@ -323,12 +328,10 @@ void loop()
       indicators_set(IND_BAT_WARN);
   }
   
-  receiver_update_status();
-
-  // Read the accelerometers and calculate raw rotations
+  // Read the accelerometers
   
-  accel_abs_sq = accel_read(accel_raw);
-  
+  accel_update();
+    
 #if PRINT_ACCEL
   accel_print_stats();
 #endif
@@ -348,19 +351,12 @@ void loop()
   Serial.println();
 #endif
 
-  pitch_estimate = rot_estimator[PITCH].estimate(gyro[PITCH].get_rad_per_sec(),
-                                                 accel_raw[X_AXIS],
-                                                 accel_raw[Z_AXIS],
-                                                 accel_abs_sq);
-  roll_estimate = rot_estimator[ROLL].estimate(gyro[ROLL].get_rad_per_sec(),
-                                               accel_raw[Y_AXIS],
-                                               accel_raw[Z_AXIS],
-                                               accel_abs_sq);
+  receiver_update_status();
 
-#if PRINT_ROT_ESTIMATE
-  rot_estimator[ROLL].print_stats();
+#if PRINT_RECEIVER
+  receiver_print_stats();
 #endif
-
+  
   if ((receiver_is_at_extreme(THROTTLE_CH) == -1) &&
       (receiver_is_at_extreme(YAW_CH)      ==  1) &&
       ((flight_state != FLIGHT_SETUP) || (setup_state != SETUP_GYROS)))
@@ -579,19 +575,60 @@ void loop()
 
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
-      // Read rotation command and calculate error
-      
-      rot_rate_error[rot] = 
-        ((float)receiver_rot[rot].get_rotation() * receiver_rot_rate_gain) -
-        gyro[rot].get_rad_per_sec();
+      receiver_rot_command[rot] = receiver_rot[rot].get_rotation();
+    }
+    
+    // Get the roll & pitch measurements from the accelerators
+    
+    accel_get_rotations(rot_measurement);
 
-#if PRINT_ROT_ERROR
-      Serial.print(rot_rate_error[rot]);
-      Serial.print("\t");
+    // For yaw, if the stick is in the middle assume a zero yaw rotation is
+    // "measured" by the operator.  Else, assume no measurement.
+    
+    if ((receiver_rot_command[YAW] <= (int16_t)-RECEIVER_YAW_ZERO_MAX) &&
+        (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_ZERO_MAX))
+      rot_measurement[YAW] = 0;
+    else
+      rot_measurement[YAW] = NAN;
+    
+    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+    {
+      // Estimate the rotation based on measurements
+      
+      rot_estimate = 
+        rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
+                                    rot_measurement[rot]);
+
+#if PRINT_ROT_ESTIMATE
+      rot_estimator[rot].print_stats();
 #endif
 
-      motor_rot_command[rot] = rot_rate_pid[rot].update(rot_rate_error[rot]);
+      // Read rotation command and calculate error
+      
+      rot_rate_error = 
+        ((float)receiver_rot_command[rot] * receiver_rot_rate_gain) -
+        gyro[rot].get_rad_per_sec();
 
+      #if PRINT_ROT_ERROR
+            Serial.print(rot_rate_error);
+            Serial.print("\t");
+      #endif
+
+      if (receiver_get_boolean(GEAR_CH)                                &&
+          (receiver_rot_command[rot] <= (int16_t) receiver_rot_limit)  &&
+          (receiver_rot_command[rot] >= (int16_t)-receiver_rot_limit))
+      {
+        // Stable mode
+
+        // TODO: rot_error calculation based on receiver_rot_gain
+
+        motor_rot_command[rot] = rot_rate_pid[rot].update_pd_i(rot_rate_error,
+                                                               -rot_estimate);
+      }
+
+      else
+        motor_rot_command[rot] = rot_rate_pid[rot].update_pd(rot_rate_error);
+        
 #if PRINT_MOTOR_ROT_COMMAND           
       Serial.print(motor_rot_command[rot]);
       Serial.print("\t");
@@ -602,108 +639,6 @@ void loop()
     Serial.println();
 #endif
     
-
-#if 0   // <<<<<<<<< rotation holding code, not used now >>>>>>>>>>
-    receiver_ok = receiver_get_status();
-    temp_receiver_raw = 0;   // Default value in case receiver is not OK
-      
-    if (receiver_ok)
-      temp_receiver_raw = receiver_rot[PITCH].get_rotation();
-
-    if ((temp_receiver_raw > (int16_t)receiver_rot_limit)  ||
-        (temp_receiver_raw < (int16_t)-receiver_rot_limit))
-    {
-      // Target is pitch rate
-      
-      rot_rate_error[PITCH] = ((float)temp_receiver_raw * receiver_rot_rate_gain) -
-                              gyro[PITCH].get_rad_per_sec();
-      rot_error[PITCH] = 0.0;
-    }
-
-    else
-    {
-      // Target is pitch 
-      
-      rot_rate_error[PITCH] = -gyro[PITCH].get_rad_per_sec();
-      rot_error[PITCH] = ((float)temp_receiver_raw * receiver_rot_gain) -
-                         pitch_estimate;
-    };
-
-    // Read roll command and calculate error
-      
-    if (receiver_ok)
-      temp_receiver_raw = receiver_rot[ROLL].get_rotation();
-
-    if ((temp_receiver_raw > (int16_t)receiver_rot_limit)  ||
-        (temp_receiver_raw < (int16_t)-receiver_rot_limit))
-    {
-      // Target is roll rate
-      
-      rot_rate_error[ROLL] = ((float)temp_receiver_raw * receiver_rot_rate_gain) -
-                              gyro[ROLL].get_rad_per_sec();
-      rot_error[ROLL] = 0.0;
-    }
-    
-    else
-    {
-      // Target is roll
-      
-      rot_rate_error[ROLL] = -gyro[ROLL].get_rad_per_sec();
-      rot_error[ROLL] = ((float)temp_receiver_raw * receiver_rot_gain) -
-                        roll_estimate;
-    };
-
-    // Read yaw command and calculate error
-        
-    if (receiver_ok)
-      temp_receiver_raw = receiver_rot[YAW].get_rotation();
-
-    // Target is yaw rate
-    
-    rot_rate_error[YAW] = ((float)temp_receiver_raw * receiver_rot_rate_gain) - 
-                          gyro[YAW].get_rad_per_sec();
-    rot_error[YAW] = 0.0;
-
-#if PRINT_ROT_ERROR
-    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-    {
-      Serial.print(rot_rate_error[rot]);
-      Serial.print("\t");
-      Serial.print(rot_error[rot]);
-      Serial.print("\t");
-    };
-    Serial.println();
-#endif
-
-    //for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-    for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS - 1; rot++)
-    {
-#if PRINT_PID
-      Serial.print(rot, DEC);
-      Serial.print("\t");
-#endif
-      motor_rot_command[rot] = rot_pid[rot].update(rot_error[rot]) +
-                               rot_rate_pid[rot].update(rot_rate_error[rot]);
-#if PRINT_PID
-      Serial.println();
-#endif
-    };
-    motor_rot_command[YAW] = rot_rate_pid[YAW].update(rot_rate_error[YAW]);
-
-#if PRINT_MOTOR_ROT_COMMAND           
-    Serial.print(motor_rot_command[PITCH]);
-    Serial.print("\t");
-    Serial.print(motor_rot_command[ROLL]);
-    Serial.print("\t");
-    Serial.print(motor_rot_command[YAW]);
-    Serial.println("\t");
-#endif
-#endif   // <<<<<<<<< rotation holding code, not used now >>>>>>>>>>
-
-#if PRINT_RECEIVER
-    receiver_print_stats();
-#endif
-
     motor_throttle_command = receiver_throttle.get_throttle();
 
     motors_command(motor_throttle_command,

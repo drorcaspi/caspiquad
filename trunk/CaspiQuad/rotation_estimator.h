@@ -125,43 +125,19 @@ public:
     float  rotation_in);       // In:  Rotation angle measurement, in rad,
                                //      calculated from accelerometer readings
 
-  //============================== estimate() ===================================
-  //
-  // Estimate rotation angle for one rotation axis, based on rotation rate and
-  // raw accelerator measurements.
-
-  float                        // Ret: New rotation estimate
-  estimate(
-    float    rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                                //      scaled from gyro reading
-    int8_t   accel_raw_base,     // In:  Raw accelerometer reading, base
-    int8_t   accel_raw_perp,     // In:  Raw accelerometer reading, perpendicular
-    uint16_t accel_abs_sq);      // In:  Sum of accel readings squared     
-
-#if 0
-  //============================== estimate() ===================================
-  //
-  // Estimate rotation angle for one rotation axis, based on rotation rate and
-  // rotation angle measurements.
-
-  float                        // Ret: New rotation estimate
-  estimate(
-    float  rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                               //      scaled from gyro reading
-    float  rotation_in);       // In:  Rotation angle measurement, in rad,
-                               //      calculated from accelerometer readings          
-
-  //============================== estimate() ===================================
-  //
-  // Estimate rotation angle for one rotation axis, based on rotation rate only.
-  // This is used in case rotation inputs are not reliable (when accelerometer
-  // reading on botx axis are close to 0).
-  
-  float                        // Ret: New rotation estimate
-  estimate(
-    float  rotation_rate_in);  // In:  Rotation rate measurement, in rad/sec,
-                               //      scaled from gyro reading
-#endif
+   //============================== estimate() ===================================
+   //
+   // Estimate rotation angle for one rotation axis, based on rotation rate and
+   // rotation angle measurements.
+   
+   float                           // Ret: New rotation estimate
+   estimate(
+     float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
+                                   //      scaled from gyro reading
+     float   rotation_in);         // In:  Rotation angle measurement, in rad,
+                                   //      calculated from accelerometer readings
+                                   //      NAN means no valid measurement
+                                
 
   //============================== read_eeprom() ==============================
   //

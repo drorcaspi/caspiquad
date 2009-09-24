@@ -127,6 +127,74 @@ float PID::get_windup_guard(void)
 };
  
 
+//============================== update_pd() ==================================
+//
+// Perform the PID algorithm, calulate the correction value given measured
+// error, using only P and D terms.
+
+float                       // Ret: Correction value
+PID::update_pd(float error) // In:  Measured error
+
+{
+  float d_term;
+
+
+#if PRINT_PID
+  Serial.print(p);
+  Serial.print("\t");
+  Serial.print(i);
+  Serial.print("\t");
+  Serial.print(d);
+  Serial.print("\t");
+  Serial.print(error);
+  Serial.print("\t");
+#endif
+
+  // Calculate error derivative 
+  
+  d_term = d * (error - last_error);
+  last_error = error;
+  
+  return (p * error) + d_term;
+};
+
+
+//============================== update_pd_i() ================================
+//
+// Perform the PID algorithm, calulate the correction value given measured
+// error (using P and D terms) and externally integrated error (using I term).
+
+float                            // Ret: Correction value
+PID::update_pd_i(float error,    // In:  Measured error
+                 float i_error)  // In:  Measured integrated error
+
+{
+  float d_term;
+
+
+#if PRINT_PID
+  Serial.print(p);
+  Serial.print("\t");
+  Serial.print(i);
+  Serial.print("\t");
+  Serial.print(d);
+  Serial.print("\t");
+  Serial.print(error);
+  Serial.print("\t");
+  Serial.print(i_error);
+  Serial.print("\t");
+#endif
+
+  // Calculate error derivative 
+  
+  d_term = d * (error - last_error);
+  last_error = error;
+  
+  return (p * error) + (i * i_error) + d_term;
+};
+
+
+#if 0
 //============================== update() =====================================
 //
 // Perform the PID algorithm and calulate the correction value
@@ -215,7 +283,7 @@ float PID::update(float target_position,
   
   return (p * error) + (i * integrated_error) + (d * (target_rate - current_rate));
 };
-
+#endif
 
 //============================== reset() ======================================
 //

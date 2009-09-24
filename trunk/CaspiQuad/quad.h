@@ -96,7 +96,7 @@ typedef enum
   X_AXIS           = 0,   // Positive forward, through nose of aircraft
   Y_AXIS           = 1,   // Positive to Right of X Axis
   Z_AXIS           = 2,   // Positive downwards
-  NUM_AXIS         = 3
+  NUM_AXES         = 3
 } Axes;
 
 #define FIRST_AXIS       X_AXIS

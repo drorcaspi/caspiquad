@@ -41,19 +41,7 @@
 //
 //=============================================================================
 
-// Minimum accelerometer reading, below which the reading is not considered
-// reiable for rotation calculation
-
-#define ROTATION_ESTIMATOR_ACCEL_RAW_MIN (ACCEL_TYP_1G / 4)
-
-// Absolute acceleration must be close to 1G for taking into account
-
-#define ROTATION_ESTIMATOR_ACCEL_SQ_MAX  ((ACCEL_MAX_1G * 1.1) * (ACCEL_MAX_1G * 1.1))
-#define ROTATION_ESTIMATOR_ACCEL_SQ_MIN  ((ACCEL_MIN_1G * 0.9) * (ACCEL_MIN_1G * 0.9))
-
-// Limit on the time estimation is based on gyro input only
-
-#define ROTATION_ESTIMATOR_INAVLID_ACC_CYCLE_LIMIT 25  // TODO: FIX THIS
+// None
 
 
 //=============================================================================
@@ -167,42 +155,23 @@ RotationEstimator::init(
 //============================== estimate() ===================================
 //
 // Estimate rotation angle for one rotation axis, based on rotation rate and
-// raw accelerator measurements.
+// rotation angle measurements.
 
-float                        // Ret: New rotation estimate
+float                           // Ret: New rotation estimate
 RotationEstimator::estimate(
-  float    rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                               //      scaled from gyro reading
-  int8_t   accel_raw_base,     // In:  Raw accelerometer reading, base
-  int8_t   accel_raw_perp,     // In:  Raw accelerometer reading, perpendicular
-  uint16_t accel_abs_sq)       // In:  Sum of accel readings squared     
-
+  float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
+                                //      scaled from gyro reading
+  float   rotation_in)          // In:  Rotation angle measurement, in rad,
+                                //      calculated from accelerometer readings
+                                //      NAN means no valid measurement
+  
 {
   float rotation_diff;
 
 
-  if (((accel_raw_base >= (int8_t) ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
-       (accel_raw_base <= (int8_t)-ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
-       (accel_raw_perp >= (int8_t) ROTATION_ESTIMATOR_ACCEL_RAW_MIN)  ||
-       (accel_raw_perp <= (int8_t)-ROTATION_ESTIMATOR_ACCEL_RAW_MIN)
-      )  &&
-      (
-       (accel_abs_sq   <= (uint16_t)ROTATION_ESTIMATOR_ACCEL_SQ_MAX)  &&
-       (accel_abs_sq   >= (uint16_t)ROTATION_ESTIMATOR_ACCEL_SQ_MIN)
-      )
-     )
+  if (rotation_in != NAN)
   {
-    // Accelerometer readings can be used as raw rotation measurement
-
-    invalid_acc_cycle_counter = 0;
-
-#if 0    
-    Serial.print(rotation_rate_in);
-    Serial.print("\t");
-    Serial.println(atan2(accel_raw_base, accel_raw_perp));
-#endif
-
-    rotation_diff = atan2(accel_raw_base, accel_raw_perp) - rotation_estimate;
+    rotation_diff = rotation_in - rotation_estimate;
 
     // First integration
   
@@ -214,79 +183,17 @@ RotationEstimator::estimate(
   }
 
   else
-  {
-    // Accelerometer readings are not reliable, use only rotation rate input.
-    // We limit the number of cycles this is done, since integration error accumulate
-    // over time.
+    rotation_estimate += cycle * (integ1_out + rotation_rate_in);
 
-    if (invalid_acc_cycle_counter < ROTATION_ESTIMATOR_INAVLID_ACC_CYCLE_LIMIT)
-    {
-      invalid_acc_cycle_counter++;
-      rotation_estimate += cycle * (integ1_out + rotation_rate_in);
-    };
-  };
-
-  // Limit rotation estimate to +/- 180 degrees
+  // Rotation estimate is cyclic, never above +/- PI (180 degrees)
   
   if (rotation_estimate > PI)
-    rotation_estimate -= PI;
+    rotation_estimate -= 2 * PI;
   else if (rotation_estimate < -PI)
-    rotation_estimate += PI;
+    rotation_estimate += 2 * PI;
   
   return rotation_estimate;
 };
-  
-
-#if 0
-//============================== estimate() ===================================
-//
-// Estimate rotation angle for one rotation axis, based on rotation rate and
-// rotation angle measurements.
-
-float                        // Ret: New rotation estimate
-RotationEstimator::estimate(
-  float  rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                             //      scaled from gyro reading
-  float  rotation_in)        // In:  Rotation angle measurement, in rad,
-                             //      calculated from accelerometer readings          
-
-{
-  float rotation_diff;
-
-
-  rotation_diff = rotation_in - rotation_estimate;
-
-  // First integration
-  
-  integ1_out += cycle_bw_sq * rotation_diff;
-
-  // Second integration
-  
-  rotation_estimate += cycle * (integ1_out + (bw_2 * rotation_diff) + rotation_rate_in);
-
-  return rotation_estimate;
-};
-  
-
-//============================== estimate() ===================================
-//
-// Estimate rotation angle for one rotation axis, based on rotation rate only.
-// This is used in case rotation inputs are not reliable (when accelerometer
-// reading on botx axis are close to 0).
-
-float                        // Ret: New rotation estimate
-RotationEstimator::estimate(
-  float  rotation_rate_in)   // In:  Rotation rate measurement, in rad/sec,
-                             //      scaled from gyro reading
-
-{
-  // Second integration
-  
-  rotation_estimate += cycle * (integ1_out + rotation_rate_in);
-
-  return rotation_estimate;
-};
-#endif
 
 
 //============================== read_eeprom() ==============================
