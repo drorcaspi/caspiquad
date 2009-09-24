@@ -317,7 +317,7 @@ handle_serial_telemetry(char query)    // In:  Query
   // Send sensor data
   
     {
-      int8_t   accel_data[NUM_AXIS];
+      int8_t   accel_data[NUM_AXES];
 
       
       for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
@@ -327,7 +327,7 @@ handle_serial_telemetry(char query)    // In:  Query
       };
 
       accel_get_current(accel_data);
-      for (axis = FIRST_AXIS; axis < NUM_AXIS; axis++)
+      for (axis = FIRST_AXIS; axis < NUM_AXES; axis++)
       {
         Serial.print(accel_data[axis]);  // Not sure about the order
         print_comma();
@@ -350,7 +350,7 @@ handle_serial_telemetry(char query)    // In:  Query
     // Send raw sensor data
 
     {
-      int8_t   accel_data[NUM_AXIS];
+      int8_t   accel_data[NUM_AXES];
 
       
       for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)

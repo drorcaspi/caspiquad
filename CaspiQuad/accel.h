@@ -64,12 +64,21 @@ boolean             // Ret: true if OK, false if failed
 accel_init(void);
 
 
-//=============================== accel_read() ================================
+//=============================== accel_update() ==============================
 //
-// Read the accelerometers
+// Update the accelerometers readings from the h/w
 
-uint16_t                                   // Ret: Sum of 3 axis squared
-accel_read(int8_t accel_data[NUM_AXIS]);   // Out: 3 axis data
+void
+accel_update(void);
+
+
+//============================ accel_get_rotations() ==========================
+//
+// Get the roll and pitch rotation measurements, based on accelerometer
+// readings
+
+void accel_get_rotations(float rot_rad[2]); // Out: Measured rotation values, in rad
+                                            //      NAN if no valid measurement
 
 
 //========================== accel_get_current() ==============================
@@ -77,8 +86,8 @@ accel_read(int8_t accel_data[NUM_AXIS]);   // Out: 3 axis data
 // Get the current accelerometers data (that has been read before from the h/w)
 // This function is intended for reading of telemetry.
 
-uint16_t                                          // Ret: Sum of 3 axis squared
-accel_get_current(int8_t accel_data[NUM_AXIS]);   // Out: 3 axis data
+void
+accel_get_current(int8_t accel_data[NUM_AXES]);   // Out: 3 axis data
 
 
 //========================== accel_print_stats() ==============================

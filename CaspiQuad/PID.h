@@ -98,6 +98,23 @@ public:
   float get_d(void);
   float get_windup_guard(void);
 
+  //============================== update_pd() ==================================
+  //
+  // Perform the PID algorithm, calulate the correction value given measured
+  // error, using only P and D terms.
+  
+  float                       // Ret: Correction value
+  update_pd(float error);     // In:  Measured error
+
+  //============================== update_pd_i() ================================
+  //
+  // Perform the PID algorithm, calulate the correction value given measured
+  // error (using P and D terms) and externally integrated error (using I term).
+  
+  float                       // Ret: Correction value
+  update_pd_i(float error,    // In:  Measured error
+              float i_error); // In:  Measured integrated error
+
   //============================== update() ===================================
   //
   // Perform the PID algorithm and calulate the correction value
