@@ -585,7 +585,7 @@ void loop()
     // For yaw, if the stick is in the middle assume a zero yaw rotation is
     // "measured" by the operator.  Else, assume no measurement.
     
-    if ((receiver_rot_command[YAW] <= (int16_t)-RECEIVER_YAW_ZERO_MAX) &&
+    if ((receiver_rot_command[YAW] <= (int16_t) RECEIVER_YAW_ZERO_MAX) &&
         (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_ZERO_MAX))
       rot_measurement[YAW] = 0;
     else
