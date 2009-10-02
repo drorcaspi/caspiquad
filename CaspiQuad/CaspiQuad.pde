@@ -174,9 +174,7 @@ void setup()
   indicators_init();
   eeprom_init();
   motors_init();
-//#if SUPPORT_ACCEL
   accel_init();   // TODO: check return value, indicate error if FALSE
-//#endif
 
   eeprom_addr = flight_control_read_eeprom();
   
@@ -330,7 +328,6 @@ void loop()
       indicators_set(IND_BAT_WARN);
   }
   
-//#if SUPPORT_ACCEL
   // Read the accelerometers
   
   accel_update();
@@ -338,7 +335,6 @@ void loop()
 #if PRINT_ACCEL
   accel_print_stats();
 #endif
-//#endif
 
   // Read gyros, center and scale
 
@@ -582,14 +578,9 @@ void loop()
       receiver_rot_command[rot] = receiver_rot[rot].get_rotation();
     }
     
-//#if SUPPORT_ACCEL
     // Get the roll & pitch measurements from the accelerators
     
     accel_get_rotations(rot_measurement);
-//#else
-    rot_measurement[ROLL] = ROT_NONE;
-    rot_measurement[PITCH] = ROT_NONE;
-//#endif
 
     // For yaw, if the stick is in the middle assume a zero yaw rotation is
     // "measured" by the operator.  Else, assume no measurement.
