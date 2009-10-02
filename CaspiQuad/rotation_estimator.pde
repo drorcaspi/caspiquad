@@ -109,7 +109,7 @@ float          // Ret: Rotation estimation (rad).
 RotationEstimator::get_estimate(void)
 
 {
-  return rotation_estimate;
+  return (float)rotation_estimate / (float)ROT_SCALE_RAD;
 };
 
 

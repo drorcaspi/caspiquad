@@ -334,9 +334,9 @@ handle_serial_telemetry(char query)    // In:  Query
       };
     }
 
-    Serial.print((int)rot_correction[ROLL]);   // levelAdjust
+    Serial.print(0, DEC);   // levelAdjust - not used
     print_comma();
-    Serial.print((int)rot_correction[PITCH]);   // levelAdjust
+    Serial.print(0, DEC);   // levelAdjust -not used
     print_comma();
 
     Serial.print(rot_estimator[ROLL].get_estimate() * DEG_IN_RAD);
