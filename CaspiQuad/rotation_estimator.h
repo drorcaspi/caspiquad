@@ -70,10 +70,8 @@ private:
   // State Variables
   
   float        integ1_out;        // Output of the first integrator (rad/sec)
-  float        rotation_estimate; // Output of the second integrator (rad)
-  uint8_t      invalid_acc_cycle_counter;
-                                  // Counts the number of cycles accellerometer
-                                  // inputs have been invalid
+  int16_t      rotation_estimate; // Output of the second integrator
+                                  // ((1 / ROT_SCALE_RAD) radians)
   
 public:
   //============================== Constructor ==================================
@@ -120,25 +118,26 @@ public:
   
   void
   init(
-    float  rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                               //      scaled from gyro reading
-    float  rotation_in);       // In:  Rotation angle measurement, in rad,
-                               //      calculated from accelerometer readings
+    float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
+                                  //      scaled from gyro reading
+    int16_t rotation_in);         // In:  Rotation angle measurement, in units of
+                                  //      (1 / ROT_SCALE_RAD) radians, calculated
+                                  //      from accelerometer readings.
 
    //============================== estimate() ===================================
    //
    // Estimate rotation angle for one rotation axis, based on rotation rate and
    // rotation angle measurements.
    
-   float                           // Ret: New rotation estimate
+   int16_t                         // Ret: New rotation estimate
    estimate(
      float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
                                    //      scaled from gyro reading
-     float   rotation_in);         // In:  Rotation angle measurement, in rad,
-                                   //      calculated from accelerometer readings
-                                   //      NAN means no valid measurement
+     int16_t rotation_in);         // In:  Rotation angle measurement, in units of
+                                   //      (1 / ROT_SCALE_RAD) radians, calculated
+                                   //      from accelerometer readings.
+                                   //      ROT_NONE means no valid measurement.
                                 
-
   //============================== read_eeprom() ==============================
   //
   // Read the configuration parameters from EEPROM, if valid.  If not, set

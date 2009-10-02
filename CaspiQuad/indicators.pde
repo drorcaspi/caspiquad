@@ -284,6 +284,10 @@ static const uint8_t *const p_buz_patterns[] = {
 static Indicator led_indicator(LED_PIN, p_led_patterns);
 static Indicator buz_indicator(BUZZER_PIN, p_buz_patterns);
 
+// Cycles counter
+
+static uint8_t   indicators_cycle_counter = 0;
+
 
 //=============================================================================
 //
@@ -479,12 +483,11 @@ void
 indicators_update(void)
 
 {
-  static uint8_t cycles_counter = 0;
-
-
-  if (++cycles_counter >= (uint8_t)(INDICATOR_TICK_MSEC / CONTROL_LOOP_CYCLE_MSEC))
+  // Update happens every INDICATOR_TICK_MSEC
+  
+  if (++indicators_cycle_counter >= (uint8_t)(INDICATOR_TICK_MSEC / CONTROL_LOOP_CYCLE_MSEC))
   {
-    cycles_counter = 0;
+    indicators_cycle_counter = 0;
     
     led_indicator.update();
     buz_indicator.update();
@@ -500,5 +503,9 @@ indicators_set(IndicatorStatus status)  // In:  Status to indicate
 {
   led_indicator.set(status);
   buz_indicator.set(status);
+
+  // Make sure the first cycle takes a full INDICATOR_TICK_MSEC
+  
+  indicators_cycle_counter = 0;
 };
 

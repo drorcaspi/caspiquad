@@ -44,19 +44,25 @@
 
 // Derived Definitions in Volts
 
-#define GYRO_RANGE_V                (GYRO_RANGE_DEG_PER_SEC * GYRO_SENS_V_PER_DEG_PER_SEC)
+#define GYRO_RANGE_V                  1.98    // (GYRO_RANGE_DEG_PER_SEC * GYRO_SENS_V_PER_DEG_PER_SEC)
 
 // Derived Definitions in Radians
 
-#define GYRO_RANGE_RAD_PER_SEC      (GYRO_RANGE_DEG_PER_SEC / DEG_IN_RAD)
-#define GYRO_SENS_V_PER_RAD_PER_SEC (GYRO_SENS_V_PER_DEG_PER_SEC * DEG_IN_RAD)
+#define GYRO_RANGE_RAD_PER_SEC       10.47    // Measurement range (rad/sec)
+                                              // (GYRO_RANGE_DEG_PER_SEC / DEG_IN_RAD)
+#define GYRO_SENS_V_PER_RAD_PER_SEC   0.1891  // Sensitivity (volts / rad/sec)
+                                              // (GYRO_SENS_V_PER_DEG_PER_SEC * DEG_IN_RAD)
 
 // Derived Definitions in Numbers
 
-#define GYRO_RANGE                  (GYRO_RANGE_V / ADC_SENS_V)
-#define GYRO_SENS_PER_DEG_PER_SEC   (GYRO_SENS_V_PER_DEG_PER_SEC / ADC_SENS_V)
-#define GYRO_SENS_PER_RAD_PER_SEC   (GYRO_SENS_PER_DEG_PER_SEC * DEG_IN_RAD)
-#define GYRO_ZERO                   (GYRO_ZERO_V / ADC_SENS_V)
+#define GYRO_RANGE                  624       // Numeric range
+                                              // (GYRO_RANGE_V / ADC_SENS_V)
+#define GYRO_SENS_PER_DEG_PER_SEC     1.040   // Sensitivity (units / deg/sec)
+                                              // (GYRO_SENS_V_PER_DEG_PER_SEC / ADC_SENS_V)
+#define GYRO_SENS_PER_RAD_PER_SEC     0.01815 // Sensitivity (units / rad/sec)
+                                              // (GYRO_SENS_PER_DEG_PER_SEC * DEG_IN_RAD)
+#define GYRO_ZERO                   520       // Nominal zero point
+                                              // (GYRO_ZERO_V / ADC_SENS_V)
 
 //-----------------------------------------------------------------------------
 //

@@ -246,11 +246,13 @@ void loop()
   uint8_t            cycle_msec;
   int16_t            receiver_rot_command[NUM_ROTATIONS];
                           // Rotation command input from the reciever
-  float              rot_measurement[NUM_ROTATIONS];
-                          // Rotations, as measured by the accelerometers (rad)
-  float              rot_estimate;
+  int16_t            rot_measurement[NUM_ROTATIONS];
+                          // Rotations, as measured by the accelerometers.
+                          // Scale is defined by ROT_SCALE_RAD
+  int16_t            rot_estimate;
                           // Rotation, as estimated based on gyro and
-                          // accelerometer measurements (rad)
+                          // accelerometer measurements.
+                          // Scale is defined by ROT_SCALE_RAD
   //float              rot_error[NUM_ROTATIONS];        // (rad)
   float              rot_rate_error;   // (rad/sec)
   uint8_t            rot;                             // Rotation index
@@ -589,7 +591,7 @@ void loop()
         (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_ZERO_MAX))
       rot_measurement[YAW] = 0;
     else
-      rot_measurement[YAW] = NAN;
+      rot_measurement[YAW] = ROT_NONE;
     
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
@@ -598,10 +600,6 @@ void loop()
       rot_estimate = 
         rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
                                     rot_measurement[rot]);
-
-#if PRINT_ROT_ESTIMATE
-      rot_estimator[rot].print_stats();
-#endif
 
       // Read rotation command and calculate error
       

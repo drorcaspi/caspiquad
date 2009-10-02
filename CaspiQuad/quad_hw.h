@@ -73,18 +73,18 @@
 #define ANALOG_REFERENCE EXTERNAL
 
 #if (ANALOG_REFERENCE == DEFAULT)
-  #define ANALOG_REFERENCE_V  5.0
+  #error default analog reference not supported  // #define ANALOG_REFERENCE_V  5.0
 #elif (ANALOG_REFERENCE == INTERNAL)
-  #define ANALOG_REFERENCE_V  1.1
+  #error internal analog reference not supported // #define ANALOG_REFERENCE_V  1.1
 #elif (ANALOG_REFERENCE == EXTERNAL)
   #define ANALOG_REFERENCE_V  3.25
 #else
   #error Illegal ANALOG_REFERENCE
 #endif
 
-#define ADC_RANGE      1024                       // 10 bits
-#define ADC_RANGE_V    ANALOG_REFERENCE_V         // Range in Volts
-#define ADC_SENS_V     (ADC_RANGE_V / ADC_RANGE)  // Sensitivy (volts / digit)
+#define ADC_RANGE      1024         // 10 bits
+#define ADC_RANGE_V       3.25      // ANALOG_REFERENCE_V         // Range in Volts
+#define ADC_SENS_V        0.003174  // (ADC_RANGE_V / ADC_RANGE)  // Sensitivy (volts / digit)
 
 
 //-----------------------------------------------------------------------------
