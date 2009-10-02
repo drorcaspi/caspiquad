@@ -431,9 +431,9 @@ handle_serial_telemetry(char query)    // In:  Query
     Serial.print(0 /* transmitterCommand[YAW] */);
 
     print_comma();
-    Serial.print((int)rot_correction[ROLL]);   // levelAdjust
+    Serial.print(0, DEC);   // levelAdjust - not supported
     print_comma();
-    Serial.print((int)rot_correction[PITCH]);   // levelAdjust
+    Serial.print(0, DEC);   // levelAdjust - not supported
 
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
