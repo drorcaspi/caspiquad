@@ -65,8 +65,7 @@ int   RotationEstimator::eeprom_base_addr;   // Base address in EEPROM
 RotationEstimator::RotationEstimator()
 
 {
-  invalid_acc_cycle_counter = 0;
-  init(0.0, 0.0);
+  init(0.0, 0);
 };
   
 
@@ -80,8 +79,8 @@ RotationEstimator::set_bw(
                     //     this to match sensor performance.
 {
   bw = bw_in;
-  bw_2 = 2 * bw_in / ROT_RAD;
-  cycle_bw_sq = cycle * bw_in * bw_in / ROT_RAD;
+  bw_2 = 2 * bw_in / (float)ROT_SCALE_RAD;
+  cycle_bw_sq = cycle * bw_in * bw_in / (float)ROT_SCALE_RAD;
 };
   
 
@@ -91,7 +90,7 @@ RotationEstimator::set_cycle(
 
 {
   cycle = cycle_in;
-  cycle_bw_sq = cycle_in * bw * bw / ROT_RAD;
+  cycle_bw_sq = cycle_in * bw * bw / (float)ROT_SCALE_RAD;
 };
   
 
