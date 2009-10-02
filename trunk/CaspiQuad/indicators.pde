@@ -26,6 +26,7 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include <avr/pgmspace.h>
 #include "indicators.h"
 
 
@@ -99,183 +100,183 @@ public:
 // LED Patterns
 //--------------
 
-static const uint8_t        none_led_pattern[]        = {PATTERN_END};
-static const uint8_t        setup_led_pattern[]       = {
-                                                          PATTERN_REPEAT,
-                                                          1, 1,
-                                                          1, 7,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_next1_led_pattern[] = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 7,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_next2_led_pattern[] = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 7,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_next3_led_pattern[] = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 7,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_err_led_pattern[]   = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 7,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        arming_led_pattern[]      = {
-                                                          PATTERN_REPEAT,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        flight_led_pattern[]      = {
-                                                          PATTERN_REPEAT,
-                                                          5, 5,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        bat_warn_led_pattern[]    = {
-                                                          PATTERN_PERMANENT,
-                                                          1, 9,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        bat_low_led_pattern[]     = {
-                                                          PATTERN_PERMANENT,
-                                                          1, 1,
-                                                          1, 3,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        hw_err_led_pattern[]      = {
-                                                          PATTERN_PERMANENT,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        sw_warn_led_pattern[]     = {
-                                                          PATTERN_ONCE,
-                                                          2, 2,
-                                                          2, 2,
-                                                          2, 2,
-                                                          2, 6,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        sw_err_led_pattern[]      = {
-                                                          PATTERN_PERMANENT,
-                                                          2, 2,
-                                                          PATTERN_END
-                                                        };
+static const uint8_t none_led_pattern[]        PROGMEM = {PATTERN_END};
+static const uint8_t setup_led_pattern[]       PROGMEM = {
+                                                           PATTERN_REPEAT,
+                                                           1, 1,
+                                                           1, 7,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_next1_led_pattern[] PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 7,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_next2_led_pattern[] PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 7,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_next3_led_pattern[] PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 7,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_err_led_pattern[]   PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 7,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t arming_led_pattern[]      PROGMEM = {
+                                                           PATTERN_REPEAT,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t flight_led_pattern[]      PROGMEM = {
+                                                           PATTERN_REPEAT,
+                                                           5, 5,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t bat_warn_led_pattern[]    PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           1, 9,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t bat_low_led_pattern[]     PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           1, 1,
+                                                           1, 3,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t hw_err_led_pattern[]      PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t sw_warn_led_pattern[]     PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           2, 2,
+                                                           2, 2,
+                                                           2, 2,
+                                                           2, 6,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t sw_err_led_pattern[]      PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           2, 2,
+                                                           PATTERN_END
+                                                         };
 
-static const uint8_t *const p_led_patterns[] = {
-                                                 none_led_pattern,
-                                                 setup_led_pattern,
-                                                 setup_next1_led_pattern,
-                                                 setup_next2_led_pattern,
-                                                 setup_next3_led_pattern,
-                                                 setup_err_led_pattern,
-                                                 arming_led_pattern,
-                                                 flight_led_pattern,
-                                                 bat_warn_led_pattern,
-                                                 bat_low_led_pattern,
-                                                 hw_err_led_pattern,
-                                                 sw_warn_led_pattern,
-                                                 sw_err_led_pattern
-                                               };
+static const prog_uint8_t *const p_led_patterns[] PROGMEM = {
+                                                              none_led_pattern,
+                                                              setup_led_pattern,
+                                                              setup_next1_led_pattern,
+                                                              setup_next2_led_pattern,
+                                                              setup_next3_led_pattern,
+                                                              setup_err_led_pattern,
+                                                              arming_led_pattern,
+                                                              flight_led_pattern,
+                                                              bat_warn_led_pattern,
+                                                              bat_low_led_pattern,
+                                                              hw_err_led_pattern,
+                                                              sw_warn_led_pattern,
+                                                              sw_err_led_pattern
+                                                            };
 
 //-----------------
 // Buzzer Patterns
 //-----------------
 
-static const uint8_t        none_buz_pattern[]        = {PATTERN_END};
-static const uint8_t        setup_buz_pattern[]       = {PATTERN_END};
-static const uint8_t        setup_next1_buz_pattern[] = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_next2_buz_pattern[] = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_next3_buz_pattern[] = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        setup_err_buz_pattern[]   = {
-                                                          PATTERN_ONCE,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 1,
-                                                          1, 7,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        arming_buz_pattern[]      = {
-                                                          PATTERN_REPEAT,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        flight_buz_pattern[]      = {PATTERN_END};
-static const uint8_t        bat_warn_buz_pattern[]    = {
-                                                          PATTERN_PERMANENT,
-                                                          1, 9,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        bat_low_buz_pattern[]     = {
-                                                          PATTERN_PERMANENT,
-                                                          1, 1,
-                                                          1, 3,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        hw_err_buz_pattern[]      = {
-                                                          PATTERN_PERMANENT,
-                                                          1, 1,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        sw_warn_buz_pattern[]     = {
-                                                          PATTERN_ONCE,
-                                                          2, 2,
-                                                          2, 2,
-                                                          2, 2,
-                                                          2, 6,
-                                                          PATTERN_END
-                                                        };
-static const uint8_t        sw_err_buz_pattern[]      = {
-                                                          PATTERN_PERMANENT,
-                                                          2, 2,
-                                                          PATTERN_END
-                                                        };
+static const uint8_t none_buz_pattern[]        PROGMEM = {PATTERN_END};
+static const uint8_t setup_buz_pattern[]       PROGMEM = {PATTERN_END};
+static const uint8_t setup_next1_buz_pattern[] PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_next2_buz_pattern[] PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_next3_buz_pattern[] PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_err_buz_pattern[]   PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 1,
+                                                           1, 7,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t arming_buz_pattern[]      PROGMEM = {
+                                                           PATTERN_REPEAT,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t flight_buz_pattern[]      PROGMEM = {PATTERN_END};
+static const uint8_t bat_warn_buz_pattern[]    PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           1, 9,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t bat_low_buz_pattern[]     PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           1, 1,
+                                                           1, 3,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t hw_err_buz_pattern[]      PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           1, 1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t sw_warn_buz_pattern[]     PROGMEM = {
+                                                           PATTERN_ONCE,
+                                                           2, 2,
+                                                           2, 2,
+                                                           2, 2,
+                                                           2, 6,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t sw_err_buz_pattern[]      PROGMEM = {
+                                                           PATTERN_PERMANENT,
+                                                           2, 2,
+                                                           PATTERN_END
+                                                         };
 
-static const uint8_t *const p_buz_patterns[] = {
-                                                 none_buz_pattern,
-                                                 setup_buz_pattern,
-                                                 setup_next1_buz_pattern,
-                                                 setup_next2_buz_pattern,
-                                                 setup_next3_buz_pattern,
-                                                 setup_err_buz_pattern,
-                                                 arming_buz_pattern,
-                                                 flight_buz_pattern,
-                                                 bat_warn_buz_pattern,
-                                                 bat_low_buz_pattern,
-                                                 hw_err_buz_pattern,
-                                                 sw_warn_buz_pattern,
-                                                 sw_err_buz_pattern
-                                               };
+static const prog_uint8_t *const p_buz_patterns[] PROGMEM = {
+                                                              none_buz_pattern,
+                                                              setup_buz_pattern,
+                                                              setup_next1_buz_pattern,
+                                                              setup_next2_buz_pattern,
+                                                              setup_next3_buz_pattern,
+                                                              setup_err_buz_pattern,
+                                                              arming_buz_pattern,
+                                                              flight_buz_pattern,
+                                                              bat_warn_buz_pattern,
+                                                              bat_low_buz_pattern,
+                                                              hw_err_buz_pattern,
+                                                              sw_warn_buz_pattern,
+                                                              sw_err_buz_pattern
+                                                            };
 
 //-------------------
 // Indicator Objects
@@ -360,11 +361,11 @@ Indicator::update(void)   // In:  Status to indicate
 
     if (current_status != IND_NONE)
     {
-      p_pattern = p_patterns[current_status];
+      p_pattern = (const uint8_t *)pgm_read_word(&p_patterns[current_status]);
 
       if (--cycle_counter == 0)
       {
-        if (p_pattern[++pattern_counter] == PATTERN_END)
+        if (pgm_read_byte(&p_pattern[++pattern_counter]) == PATTERN_END)
         {
           // End of pattern.
 
@@ -377,7 +378,7 @@ Indicator::update(void)   // In:  Status to indicate
         {
           // Get next item in pattern
           
-          cycle_counter = p_pattern[pattern_counter];
+          cycle_counter = pgm_read_byte(&p_pattern[pattern_counter]);
           
           //Serial.println(cycle_counter, DEC);
           
@@ -399,11 +400,11 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
   uint8_t        pattern_mode;
 
 
-  p_pattern = p_patterns[status_in];
-  pattern_mode = p_pattern[0];
+  p_pattern = (const uint8_t *)pgm_read_word(&p_patterns[status_in]);
+  pattern_mode = pgm_read_byte(&p_pattern[0]);
 
-  if ((p_patterns[status][0] != PATTERN_PERMANENT)  ||
-      (pattern_mode          == PATTERN_PERMANENT))
+  if ((pgm_read_byte(&(p_patterns[status][0])) != PATTERN_PERMANENT)  ||
+      (pattern_mode                            == PATTERN_PERMANENT))
   {
     // Only a permanent pattern can update a permanent pattern
     
@@ -437,7 +438,7 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
       // The actual pattern starts at entry #1
       
       pattern_counter = 1;
-      cycle_counter = p_pattern[1];
+      cycle_counter = pgm_read_byte(&p_pattern[1]);
 
       digitalWrite(pin, 1);
     }
