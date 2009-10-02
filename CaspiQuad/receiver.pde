@@ -112,8 +112,8 @@
 //
 //-----------------------------------------------------------------------------
 
-#define RECEIVER_ROTATION_THRESHOLD0  4 
-#define RECEIVER_ROTATION_THRESHOLD1  (RECEIVER_NOM_SWING / 2)
+#define RECEIVER_ROTATION_THRESHOLD0   16
+#define RECEIVER_ROTATION_THRESHOLD1  200
 
 //-----------------------------------------------------------------------------
 //
@@ -579,8 +579,8 @@ ReceiverRotation::get_rotation(void)
     
     ret_val = receiver_get_current_raw(ch) - raw_zero;
 
-    if ((ret_val < (int16_t) RECEIVER_ROTATION_THRESHOLD0)   &&
-        (ret_val > (int16_t)-RECEIVER_ROTATION_THRESHOLD0))
+    if ((ret_val <= (int16_t) RECEIVER_ROTATION_THRESHOLD0)   &&
+        (ret_val >= (int16_t)-RECEIVER_ROTATION_THRESHOLD0))
     {
       // A small margin around 0 is considered 0
       
