@@ -80,8 +80,8 @@ RotationEstimator::set_bw(
                     //     this to match sensor performance.
 {
   bw = bw_in;
-  bw_2 = 2 * bw_in;
-  cycle_bw_sq = cycle * bw_in * bw_in;
+  bw_2 = 2 * bw_in / ROT_RAD;
+  cycle_bw_sq = cycle * bw_in * bw_in / ROT_RAD;
 };
   
 
@@ -91,7 +91,7 @@ RotationEstimator::set_cycle(
 
 {
   cycle = cycle_in;
-  cycle_bw_sq = cycle_in * bw * bw;
+  cycle_bw_sq = cycle_in * bw * bw / ROT_RAD;
 };
   
 
@@ -138,10 +138,11 @@ RotationEstimator::print_stats(void)
 
 void
 RotationEstimator::init(
-  float  rotation_rate_in,   // In:  Rotation rate measurement, in rad/sec,
-                             //      scaled from gyro reading
-  float  rotation_in)        // In:  Rotation angle measurement, in rad,
-                             //      calculated from accelerometer readings
+  float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
+                                //      scaled from gyro reading
+  int16_t rotation_in)          // In:  Rotation angle measurement, in units of
+                                //      (1 / ROT_SCALE_RAD) radians, calculated
+                                //      from accelerometer readings.
 
 {
   // Set the integrator outputs so we would get exactly 0 at their inputs if
@@ -157,40 +158,56 @@ RotationEstimator::init(
 // Estimate rotation angle for one rotation axis, based on rotation rate and
 // rotation angle measurements.
 
-float                           // Ret: New rotation estimate
+int16_t                         // Ret: New rotation estimate
 RotationEstimator::estimate(
   float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
                                 //      scaled from gyro reading
-  float   rotation_in)          // In:  Rotation angle measurement, in rad,
-                                //      calculated from accelerometer readings
-                                //      NAN means no valid measurement
+  int16_t rotation_in)          // In:  Rotation angle measurement, in units of
+                                //      (1 / ROT_SCALE_RAD) radians, calculated
+                                //      from accelerometer readings.
+                                //      ROT_NONE means no valid measurement.
   
 {
-  float rotation_diff;
+  int16_t rotation_diff;
 
 
-  if (rotation_in != NAN)
+  if (rotation_in != ROT_NONE)
   {
     rotation_diff = rotation_in - rotation_estimate;
 
     // First integration
+    // TODO: convert to fixed point
   
-    integ1_out += cycle_bw_sq * rotation_diff;
+    integ1_out += cycle_bw_sq * (float)rotation_diff;
 
     // Second integration
   
-    rotation_estimate += cycle * (integ1_out + (bw_2 * rotation_diff) + rotation_rate_in);
+    rotation_estimate += (int16_t)(cycle * (integ1_out +
+                                            (bw_2 * (float)rotation_diff) +
+                                            rotation_rate_in));
+
+#if PRINT_ROT_ESTIMATE
+    Serial.print(rotation_diff, DEC);
+    Serial.print("\t");
+#endif
   }
 
   else
-    rotation_estimate += cycle * (integ1_out + rotation_rate_in);
+    rotation_estimate += (int16_t)(cycle * (integ1_out + rotation_rate_in));
+
+#if PRINT_ROT_ESTIMATE
+  Serial.print(integ1_out);
+  Serial.print("\t");
+  Serial.println(rotation_estimate, DEC);
+#endif
 
   // Rotation estimate is cyclic, never above +/- PI (180 degrees)
-  
-  if (rotation_estimate > PI)
-    rotation_estimate -= 2 * PI;
-  else if (rotation_estimate < -PI)
-    rotation_estimate += 2 * PI;
+  // This happens natively if the scale is set to 2^15 per rad
+  // The following is a sanity check
+
+#if (ROT_SCALE_PI != (1u << 15))
+  #error ROT_SCALE_PI assumed to be 2^15
+#endif
   
   return rotation_estimate;
 };

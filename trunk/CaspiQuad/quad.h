@@ -120,6 +120,20 @@ typedef enum
 
 //=============================================================================
 //
+// Rotation Scale Definitions
+//
+//=============================================================================
+
+#define ROT_SCALE_PI  (1u << 15)   // Representation of PI radians (180 degrees)
+                                   // Selected so it will wrap nicely when used
+                                   // in a signed 16-bit variable.
+#define ROT_SCALE_RAD 10430        // Representation of 1 radian
+#define ROT_NONE      ((int16_t)ROT_SCALE_PI)
+                                   // Represents no valid rotation measurement
+
+
+//=============================================================================
+//
 // Control Loop Definitions
 //
 //=============================================================================

@@ -35,6 +35,7 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include "atan.h"
 #include "accel.h"
 
 #include <Wire.h>
@@ -180,36 +181,68 @@ accel_update(void)
 // Get the roll and pitch rotation measurements, based on accelerometer
 // readings
 
-void accel_get_rotations(float rot_rad[2])  // Out: Measured rotation values, in rad
-                                            //      NAN if no valid measurement
+void 
+accel_get_rotations(
+  int16_t rot_rad[2])  // Out: Measured rotation values, in (rad / ROT_RAD)
+                       //      ROT_NONE if no valid measurement
                     
 {
-  int16_t accel_abs_sq;
+  int8_t atan_col;
+  int8_t atan_row;
 
 
-  accel_abs_sq =
-    ((int16_t)current_accel_data[X_AXIS] * (int16_t)current_accel_data[X_AXIS]) + 
-    ((int16_t)current_accel_data[Y_AXIS] * (int16_t)current_accel_data[Y_AXIS]) +
-    ((int16_t)current_accel_data[Z_AXIS] * (int16_t)current_accel_data[Z_AXIS]);
+  rot_rad[ROLL]  = (int16_t)ROT_NONE;
+  rot_rad[PITCH] = (int16_t)ROT_NONE;
+  
+  atan_row = current_accel_data[Z_AXIS];
 
-  if ((accel_abs_sq <= (uint16_t)ACCEL_ROTATION_MEASURE_SQ_MAX)  &&  // TODO: change the name
-      (accel_abs_sq >= (uint16_t)ACCEL_ROTATION_MEASURE_SQ_MIN)  &&
-      (current_accel_data[Z_AXIS] >= (int8_t)ACCEL_ROTATION_MEASURE_RAW_MIN))
-
+  if ((atan_row >= (int8_t)ATAN_ROW_MIN) &&
+      (atan_row <= (int8_t)ATAN_ROW_MAX))
   {
-    // We only calculate the rotation if:
-    // - Absolute acceleration is about 1G
-    // - Z axis is at least at some minimum (rotation angle not too steep)
+    atan_row -= (int8_t)ATAN_ROW_MIN;
+    
+    // Find roll angle based on atan2(Z, Y)
 
-    rot_rad[ROLL] = atan2(current_accel_data[Y_AXIS], current_accel_data[Z_AXIS]);
-    rot_rad[PITCH] = atan2(current_accel_data[X_AXIS], current_accel_data[Z_AXIS]);
+    atan_col = current_accel_data[Y_AXIS];
+    
+    if (atan_col >= 0)
+    {
+      if (atan_col <= (int8_t)ATAN_COL_MAX)
+        rot_rad[ROLL] = atan_table[atan_row][atan_col];
+    }
+    
+    else
+    {
+      atan_col = -atan_col;
+      
+      if (atan_col <= (int8_t)ATAN_COL_MAX)
+        rot_rad[ROLL] = -atan_table[atan_row][atan_col];
+    };
+    
+    // Find pitch angle based on atan2(Z, X)
+    
+    atan_col = current_accel_data[X_AXIS];
+    
+    if (atan_col >= 0)
+    {
+      if (atan_col <= (int8_t)ATAN_COL_MAX)
+        rot_rad[PITCH] = atan_table[atan_row][atan_col];
+    }
+    
+    else
+    {
+      atan_col = -atan_col;
+      
+      if (atan_col <= (int8_t)ATAN_COL_MAX)
+        rot_rad[PITCH] = -atan_table[atan_row][atan_col];
+    };
   }
 
-  else
-  {
-    rot_rad[ROLL] = NAN;
-    rot_rad[PITCH] = NAN;
-  };
+#if PRINT_ACCEL
+  Serial.print(rot_rad[ROLL], DEC);
+  Serial.print("\t");
+  Serial.println(rot_rad[PITCH], DEC);
+#endif
 }
 
 

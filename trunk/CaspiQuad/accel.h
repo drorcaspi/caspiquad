@@ -49,7 +49,7 @@
 // Derived Definitions
 
 #define ACCEL_RANGE   (ACCEL_MAX - ACCEL_MIN + 1)
-#define ACCEL_1G      (1.0 / 0.018)   // Nominal accelerometer reading @ 1G
+#define ACCEL_1G      (1.0 / 0.018)              // Nominal accelerometer reading @ 1G
 #define ACCEL_MIN_1G  (1.0 / ACCEL_MAX_SENS_G)   // Nominal accelerometer reading @ 1G
 #define ACCEL_TYP_1G  (1.0 / ACCEL_TYP_SENS_G)   // Nominal accelerometer reading @ 1G
 #define ACCEL_MAX_1G  (1.0 / ACCEL_MIN_SENS_G)   // Nominal accelerometer reading @ 1G
@@ -77,8 +77,10 @@ accel_update(void);
 // Get the roll and pitch rotation measurements, based on accelerometer
 // readings
 
-void accel_get_rotations(float rot_rad[2]); // Out: Measured rotation values, in rad
-                                            //      NAN if no valid measurement
+void 
+accel_get_rotations(
+  int16_t rot_rad[2]); // Out: Measured rotation values, in (rad / ROT_RAD)
+                       //      ROT_NONE if no valid measurement
 
 
 //========================== accel_get_current() ==============================
