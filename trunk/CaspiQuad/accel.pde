@@ -35,6 +35,7 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include <avr/pgmspace.h>
 #include "atan.h"
 #include "accel.h"
 
@@ -205,10 +206,13 @@ accel_get_rotations(
 
     atan_col = current_accel_data[Y_AXIS];
     
+    // Get the atan value from the table.  Note that the table resides in
+    // program memory, therefore we must use pgm_read_word() to access it.
+    
     if (atan_col >= 0)
     {
       if (atan_col <= (int8_t)ATAN_COL_MAX)
-        rot_rad[ROLL] = atan_table[atan_row][atan_col];
+        rot_rad[ROLL] = pgm_read_word(&(atan_table[atan_row][atan_col]));
     }
     
     else
@@ -216,7 +220,7 @@ accel_get_rotations(
       atan_col = -atan_col;
       
       if (atan_col <= (int8_t)ATAN_COL_MAX)
-        rot_rad[ROLL] = -atan_table[atan_row][atan_col];
+        rot_rad[ROLL] = -pgm_read_word(&(atan_table[atan_row][atan_col]));
     };
     
     // Find pitch angle based on atan2(Z, X)
@@ -226,7 +230,7 @@ accel_get_rotations(
     if (atan_col >= 0)
     {
       if (atan_col <= (int8_t)ATAN_COL_MAX)
-        rot_rad[PITCH] = atan_table[atan_row][atan_col];
+        rot_rad[PITCH] = pgm_read_word(&(atan_table[atan_row][atan_col]));
     }
     
     else
@@ -234,7 +238,7 @@ accel_get_rotations(
       atan_col = -atan_col;
       
       if (atan_col <= (int8_t)ATAN_COL_MAX)
-        rot_rad[PITCH] = -atan_table[atan_row][atan_col];
+        rot_rad[PITCH] = -pgm_read_word(&(atan_table[atan_row][atan_col]));
     };
   }
 

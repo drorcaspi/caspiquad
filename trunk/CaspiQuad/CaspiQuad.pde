@@ -54,7 +54,7 @@ typedef enum
 // Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
 // correct (yaw is 0)
 
-#define RECEIVER_YAW_ZERO_MAX  10
+#define RECEIVER_YAW_ZERO_MAX  32
 
 
 //=============================================================================
@@ -81,8 +81,6 @@ RotationEstimator rot_estimator[NUM_ROTATIONS];
 
 PID               rot_rate_pid[NUM_ROTATIONS];
 PID               rot_pid[NUM_ROTATIONS];
-
-float             rot_correction[NUM_ROTATIONS];   // (rad/sec)
 
 float             receiver_rot_rate_gain = 0.002;  // (rad/sec)
                     // Multiplies the receiver rotation command (cenetered)
@@ -176,7 +174,9 @@ void setup()
   indicators_init();
   eeprom_init();
   motors_init();
-  accel_init();
+//#if SUPPORT_ACCEL
+  accel_init();   // TODO: check return value, indicate error if FALSE
+//#endif
 
   eeprom_addr = flight_control_read_eeprom();
   
@@ -330,6 +330,7 @@ void loop()
       indicators_set(IND_BAT_WARN);
   }
   
+//#if SUPPORT_ACCEL
   // Read the accelerometers
   
   accel_update();
@@ -337,6 +338,7 @@ void loop()
 #if PRINT_ACCEL
   accel_print_stats();
 #endif
+//#endif
 
   // Read gyros, center and scale
 
@@ -580,9 +582,14 @@ void loop()
       receiver_rot_command[rot] = receiver_rot[rot].get_rotation();
     }
     
+//#if SUPPORT_ACCEL
     // Get the roll & pitch measurements from the accelerators
     
     accel_get_rotations(rot_measurement);
+//#else
+    rot_measurement[ROLL] = ROT_NONE;
+    rot_measurement[PITCH] = ROT_NONE;
+//#endif
 
     // For yaw, if the stick is in the middle assume a zero yaw rotation is
     // "measured" by the operator.  Else, assume no measurement.
@@ -607,10 +614,10 @@ void loop()
         ((float)receiver_rot_command[rot] * receiver_rot_rate_gain) -
         gyro[rot].get_rad_per_sec();
 
-      #if PRINT_ROT_ERROR
-            Serial.print(rot_rate_error);
-            Serial.print("\t");
-      #endif
+#if PRINT_ROT_ERROR
+      Serial.print(rot_rate_error);
+      Serial.print("\t");
+#endif
 
       if (receiver_get_boolean(GEAR_CH)                                &&
           (receiver_rot_command[rot] <= (int16_t) receiver_rot_limit)  &&
