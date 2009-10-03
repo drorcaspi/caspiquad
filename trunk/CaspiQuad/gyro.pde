@@ -68,7 +68,7 @@
 //
 // Gyro rest state determination
 
-#define GYRO_REST_AVG_DEV_MAX       1    // How much the gyro reading can
+#define GYRO_REST_AVG_DEV_MAX       2    // How much the gyro reading can
                                          // deviate from the long-term average
                                          // and still be considered stable.
 #define GYRO_REST_ZERO_DEV_MAX    100    // How much the gyro reading can

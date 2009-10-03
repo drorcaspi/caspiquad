@@ -46,7 +46,7 @@
 #define PRINT_ACCEL               0
 #define PRINT_GYRO                0
 #define PRINT_ROT_ERROR           0
-#define PRINT_ROT_ESTIMATE        1
+#define PRINT_ROT_ESTIMATE        0
 #define PRINT_ROT_CORRECTION      0
 #define PRINT_MOTOR_ROT_COMMAND   0
 #define PRINT_PID                 0

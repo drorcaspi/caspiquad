@@ -144,12 +144,12 @@ handle_serial_telemetry(char query)    // In:  Query
     // Receive roll and pitch rotation rate (gyro) PID setting
 
     rot_rate_pid[ROLL].set_p(serial_read_float());
-    rot_rate_pid[ROLL].set_i(serial_read_float());
+    rot_rate_pid[ROLL].set_i(serial_read_float()/1000);
     rot_rate_pid[ROLL].set_d(serial_read_float());
     rot_rate_pid[ROLL].reset();
     
     rot_rate_pid[PITCH].set_p(serial_read_float());
-    rot_rate_pid[PITCH].set_i(serial_read_float());
+    rot_rate_pid[PITCH].set_i(serial_read_float()/1000);
     rot_rate_pid[PITCH].set_d(serial_read_float());
     rot_rate_pid[PITCH].reset();
 
@@ -159,7 +159,7 @@ handle_serial_telemetry(char query)    // In:  Query
     // Receive yaw rotation rate (gyro) PID settings
     
     rot_rate_pid[YAW].set_p(serial_read_float());
-    rot_rate_pid[YAW].set_i(serial_read_float());
+    rot_rate_pid[YAW].set_i(serial_read_float()/1000);
     rot_rate_pid[YAW].set_d(serial_read_float());
     rot_rate_pid[YAW].reset();
 
@@ -243,13 +243,13 @@ handle_serial_telemetry(char query)    // In:  Query
 
     Serial.print(rot_rate_pid[ROLL].get_p());
     print_comma();
-    Serial.print(rot_rate_pid[ROLL].get_i());
+    Serial.print(rot_rate_pid[ROLL].get_i()*1000);
     print_comma();
     Serial.print(rot_rate_pid[ROLL].get_d());
     print_comma();
     Serial.print(rot_rate_pid[PITCH].get_p());
     print_comma();
-    Serial.print(rot_rate_pid[PITCH].get_i());
+    Serial.print(rot_rate_pid[PITCH].get_i()*1000);
     print_comma();
     Serial.println(rot_rate_pid[PITCH].get_d());
 
@@ -260,7 +260,7 @@ handle_serial_telemetry(char query)    // In:  Query
     
     Serial.print(rot_rate_pid[YAW].get_p());
     print_comma();
-    Serial.print(rot_rate_pid[YAW].get_i());
+    Serial.print(rot_rate_pid[YAW].get_i()*1000);
     print_comma();
     Serial.println(rot_rate_pid[YAW].get_d());  
     break;
