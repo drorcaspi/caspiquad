@@ -59,7 +59,7 @@
                                               // (GYRO_RANGE_V / ADC_SENS_V)
 #define GYRO_SENS_PER_DEG_PER_SEC     1.040   // Sensitivity (units / deg/sec)
                                               // (GYRO_SENS_V_PER_DEG_PER_SEC / ADC_SENS_V)
-#define GYRO_SENS_PER_RAD_PER_SEC     0.01815 // Sensitivity (units / rad/sec)
+#define GYRO_SENS_PER_RAD_PER_SEC    59.58    // Sensitivity (units / rad/sec)
                                               // (GYRO_SENS_PER_DEG_PER_SEC * DEG_IN_RAD)
 #define GYRO_ZERO                   520       // Nominal zero point
                                               // (GYRO_ZERO_V / ADC_SENS_V)
