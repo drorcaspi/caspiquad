@@ -79,8 +79,8 @@ RotationEstimator::set_bw(
                     //     this to match sensor performance.
 {
   bw = bw_in;
-  bw_2 = 2 * bw_in / (float)ROT_SCALE_RAD;
-  cycle_bw_sq = cycle * bw_in * bw_in / (float)ROT_SCALE_RAD;
+  bw_2 = 2 * bw_in;  // / (float)ROT_SCALE_RAD;
+  cycle_bw_sq = cycle * bw_in * bw_in;  // / (float)ROT_SCALE_RAD;
 };
   
 
@@ -170,6 +170,11 @@ RotationEstimator::estimate(
   int16_t rotation_diff;
 
 
+#if PRINT_ROT_ESTIMATE
+  Serial.print(rotation_rate_in);
+  Serial.print("\t");
+#endif
+
   if (rotation_in != ROT_NONE)
   {
     rotation_diff = rotation_in - rotation_estimate;
@@ -183,16 +188,23 @@ RotationEstimator::estimate(
   
     rotation_estimate += (int16_t)(cycle * (integ1_out +
                                             (bw_2 * (float)rotation_diff) +
-                                            rotation_rate_in));
+                                            ROT_SCALE_RAD * rotation_rate_in));
 
 #if PRINT_ROT_ESTIMATE
+    Serial.print(rotation_in, DEC);
+    Serial.print("\t");
     Serial.print(rotation_diff, DEC);
     Serial.print("\t");
 #endif
   }
 
   else
-    rotation_estimate += (int16_t)(cycle * (integ1_out + rotation_rate_in));
+  {
+    rotation_estimate += (int16_t)(cycle * (integ1_out + (ROT_SCALE_RAD * rotation_rate_in)));
+#if PRINT_ROT_ESTIMATE
+    Serial.print("-\t-\t");
+#endif
+  };
 
 #if PRINT_ROT_ESTIMATE
   Serial.print(integ1_out);
