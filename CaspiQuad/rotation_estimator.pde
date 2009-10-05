@@ -44,6 +44,108 @@
 // None
 
 
+//========================= class RotationIntegrator ==========================
+//
+// This class implements a rotation angle estimator based on rotation rate
+// input, using an integrator
+//
+//  rotation rate
+//  measure.                 +--------+  
+//  (rad/sec) -------------->|integral|----->   rotation estimate (rad)
+//                           +--------+  
+//
+//=============================================================================
+
+
+//============================== Constructor ==================================
+//
+// Initializes a RotationIntegrator object
+
+RotationIntegrator::RotationIntegrator()
+
+{
+  reset();
+};
+
+
+//============================== get_*() ======================================
+//
+// Get the estimator's configurable parameters and state variables
+
+float          // Ret: Rotation estimation (rad).
+RotationIntegrator::get_estimate(void)
+
+{
+  return (float)rotation_estimate / (float)ROT_SCALE_RAD;
+};
+
+
+//============================== reset() ======================================
+//
+// Reset the estimator's state variable (integrator output)
+
+void
+RotationIntegrator::reset(void)
+
+{
+  rotation_estimate = 0;
+};
+
+
+//============================== estimate() ===================================
+//
+// Estimate rotation angle for one rotation axis, based on rotation rate and
+// rotation angle measurements.
+
+int16_t                         // Ret: New rotation estimate
+RotationIntegrator::estimate(
+  float   rotation_rate_in)    // In:  Rotation rate measurement, in rad/sec,
+                                //      scaled from gyro reading
+
+{
+  rotation_estimate +=
+    (int16_t)((float)CONTROL_LOOP_CYCLE_SEC * (float)ROT_SCALE_RAD * rotation_rate_in);
+
+#if PRINT_ROT_ESTIMATE
+  Serial.print(rotation_rate_in);
+  Serial.print("\t");
+  Serial.println(rotation_estimate, DEC);
+#endif
+
+  // Rotation estimate is cyclic, never above +/- PI (180 degrees)
+  // This happens natively if the scale is set to 2^15 per rad
+  // The following is a sanity check
+
+#if (ROT_SCALE_PI != (1u << 15))
+  #error ROT_SCALE_PI assumed to be 2^15
+#endif
+  
+  return rotation_estimate;
+};
+
+                                
+//========================= class RotationEstimator ===========================
+//
+// This class implements a rotation angle estimator using a complementary
+// filter.
+//
+//  rotation rate
+//  measure.                                        +---+
+//  (rad/sec) ------------------------------------->|   |              rotation
+//                             (rad/sec^2)          |   |              estimate
+//  rotation    +---+      +-----+    +--------+    |   |   +--------+  (rad)
+//  measure. -->| + |--+-->|*bw^2|--->|integral|--->| + |-->|integral|--+-->
+//  (rad)       +---+  |   +-----+    +--------+    |   |   +--------+  |
+//                ^    |   +-----+         (rad/sec)|   |               |
+//              - |    +-->|*2bw |----------------->|   |               |
+//                |        +-----+ (rad/sec)        +---+               |
+//                +-----------------------------------------------------+
+//
+// Original code written by RoyLB at:
+// http://www.rcgroups.com/forums/showpost.php?p=12082524&postcount=1286
+//
+//=============================================================================
+
 //=============================================================================
 //
 // Static Members
@@ -51,7 +153,6 @@
 //=============================================================================
 
 float RotationEstimator::bw          = 1;
-float RotationEstimator::cycle       = CONTROL_LOOP_CYCLE_SEC;
 float RotationEstimator::bw_2;
 float RotationEstimator::cycle_bw_sq;
 
@@ -65,7 +166,7 @@ int   RotationEstimator::eeprom_base_addr;   // Base address in EEPROM
 RotationEstimator::RotationEstimator()
 
 {
-  init(0.0, 0);
+  reset();
 };
   
 
@@ -79,18 +180,8 @@ RotationEstimator::set_bw(
                     //     this to match sensor performance.
 {
   bw = bw_in;
-  bw_2 = 2 * bw_in;  // / (float)ROT_SCALE_RAD;
-  cycle_bw_sq = cycle * bw_in * bw_in;  // / (float)ROT_SCALE_RAD;
-};
-  
-
-void
-RotationEstimator::set_cycle(
-  float cycle_in)   // In: Iteration cycle of the estimator filter (sec)
-
-{
-  cycle = cycle_in;
-  cycle_bw_sq = cycle_in * bw * bw / (float)ROT_SCALE_RAD;
+  bw_2 = 2 * bw_in;
+  cycle_bw_sq = (float)CONTROL_LOOP_CYCLE_SEC * bw_in * bw_in;
 };
   
 
@@ -105,50 +196,17 @@ RotationEstimator::get_bw(void)
   return bw;
 };
 
-float          // Ret: Rotation estimation (rad).
-RotationEstimator::get_estimate(void)
 
-{
-  return (float)rotation_estimate / (float)ROT_SCALE_RAD;
-};
-
-
-//========================== print_stats() ====================================
-//
-// Print some statistics (for debug)
-
-void
-RotationEstimator::print_stats(void)
-
-{
-  Serial.print(bw);
-  Serial.print("\t");
-  Serial.print(cycle);
-  Serial.print("\t");
-  Serial.print(integ1_out);
-  Serial.print("\t");
-  Serial.println(rotation_estimate);
-};
-
-
-//============================== init() =======================================
+//============================== reset() ======================================
 //
 // Initialize the estimator's state variables (integrator outputs)
 
 void
-RotationEstimator::init(
-  float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
-                                //      scaled from gyro reading
-  int16_t rotation_in)          // In:  Rotation angle measurement, in units of
-                                //      (1 / ROT_SCALE_RAD) radians, calculated
-                                //      from accelerometer readings.
+RotationEstimator::reset(void)
 
 {
-  // Set the integrator outputs so we would get exactly 0 at their inputs if
-  // we call the estimator with the same values (see estimate()).
-  
-  rotation_estimate = rotation_in;
-  integ1_out = -rotation_rate_in;
+  rotation_estimate = 0;
+  integ1_out = 0;
 };
   
 
@@ -186,9 +244,10 @@ RotationEstimator::estimate(
 
     // Second integration
   
-    rotation_estimate += (int16_t)(cycle * (integ1_out +
-                                            (bw_2 * (float)rotation_diff) +
-                                            ROT_SCALE_RAD * rotation_rate_in));
+    rotation_estimate += 
+      (int16_t)(((float)CONTROL_LOOP_CYCLE_SEC) * (integ1_out +
+                                                   (bw_2 * (float)rotation_diff) +
+                                                   ROT_SCALE_RAD * rotation_rate_in));
 
 #if PRINT_ROT_ESTIMATE
     Serial.print(rotation_in, DEC);
@@ -200,7 +259,9 @@ RotationEstimator::estimate(
 
   else
   {
-    rotation_estimate += (int16_t)(cycle * (integ1_out + (ROT_SCALE_RAD * rotation_rate_in)));
+    rotation_estimate +=
+      (int16_t)(((float)CONTROL_LOOP_CYCLE_SEC) * (integ1_out +
+                                                   (ROT_SCALE_RAD * rotation_rate_in)));
 #if PRINT_ROT_ESTIMATE
     Serial.print("-\t-\t");
 #endif
