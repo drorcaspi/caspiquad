@@ -29,7 +29,59 @@
 -----------------------------------------------------------------------------*/
 
 
+//========================= class RotationIntegrator ==========================
+//
+// This class implements a rotation angle estimator based on rotation rate
+// input, using an integrator
+//
+//  rotation rate
+//  measure.                 +--------+  
+//  (rad/sec) -------------->|integral|----->   rotation estimate (rad)
+//                           +--------+  
+//
 //=============================================================================
+
+class RotationIntegrator
+
+{
+protected:
+  int16_t      rotation_estimate; // Output of the second integrator
+                                  // ((1 / ROT_SCALE_RAD) radians)
+  
+public:
+  //============================== Constructor ==================================
+  //
+  // Initializes a RotationEstimator object
+  
+  RotationIntegrator(void);
+  
+  //============================== get_*() ======================================
+  //
+  // Get the estimator's configurable parameters and state variable
+  
+  float          // Ret: Rotation estimation (rad).
+  get_estimate(void);
+
+  //============================== reset() ======================================
+  //
+  // Reset the estimator's state variable (integrator output)
+  
+  void
+  reset(void);
+
+  //============================== estimate() ===================================
+  //
+  // Estimate rotation angle for one rotation axis, based on rotation rate and
+  // rotation angle measurements.
+  
+  int16_t                         // Ret: New rotation estimate
+  estimate(
+    float   rotation_rate_in);    // In:  Rotation rate measurement, in rad/sec,
+                                  //      scaled from gyro reading
+};
+
+
+//========================= class RotationEstimator ===========================
 //
 // This class implements a rotation angle estimator using a complementary
 // filter.
@@ -51,7 +103,7 @@
 //
 //=============================================================================
 
-class RotationEstimator
+class RotationEstimator: public RotationIntegrator
 
 {
 private:
@@ -61,7 +113,6 @@ private:
   
   static float bw;           // Bandwidth of the estimator filter (1/sec). Tune
                              // this to match sensor performance.
-  static float cycle;        // Iteration cycle of the estimator filter (sec)
   static float bw_2;         // Calculated as 2 * bw at setup time
   static float cycle_bw_sq;  // Calculated as dt * bw * bw at setup time
 
@@ -70,8 +121,6 @@ private:
   // State Variables
   
   float        integ1_out;        // Output of the first integrator (rad/sec)
-  int16_t      rotation_estimate; // Output of the second integrator
-                                  // ((1 / ROT_SCALE_RAD) radians)
   
 public:
   //============================== Constructor ==================================
@@ -89,12 +138,7 @@ public:
   set_bw(
     float bw_in);        // In: Bandwidth of the estimator filter (1/sec).
                          //     Tune this to match sensor performance.
-
-  static
-  void
-  set_cycle(
-    float cycle_in);     // In: Iteration cycle of the estimator filter (sec)
-                       
+                      
   //============================== get_*() ======================================
   //
   // Get the estimator's configurable parameters and state variable
@@ -103,40 +147,26 @@ public:
   float          // Ret: Bandwidth of the estimator filter (1/sec).
   get_bw(void);
 
-  float          // Ret: Rotation estimation (rad).
-  get_estimate(void);
-
-  //========================== print_stats() ====================================
-  //
-  // Print some statistics (for debug)
-
-  void print_stats(void);
-  
-  //============================== init() =======================================
+  //============================== reset() ======================================
   //
   // Initialize the estimator's state variables (integrator outputs)
   
   void
-  init(
+  reset(void);
+ 
+  //============================== estimate() ===================================
+  //
+  // Estimate rotation angle for one rotation axis, based on rotation rate and
+  // rotation angle measurements.
+  
+  int16_t                         // Ret: New rotation estimate
+  estimate(
     float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
                                   //      scaled from gyro reading
     int16_t rotation_in);         // In:  Rotation angle measurement, in units of
                                   //      (1 / ROT_SCALE_RAD) radians, calculated
                                   //      from accelerometer readings.
-
-   //============================== estimate() ===================================
-   //
-   // Estimate rotation angle for one rotation axis, based on rotation rate and
-   // rotation angle measurements.
-   
-   int16_t                         // Ret: New rotation estimate
-   estimate(
-     float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
-                                   //      scaled from gyro reading
-     int16_t rotation_in);         // In:  Rotation angle measurement, in units of
-                                   //      (1 / ROT_SCALE_RAD) radians, calculated
-                                   //      from accelerometer readings.
-                                   //      ROT_NONE means no valid measurement.
+                                  //      ROT_NONE means no valid measurement.
                                 
   //============================== read_eeprom() ==============================
   //

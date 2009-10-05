@@ -68,27 +68,30 @@ typedef enum
 
 // Cycle Timing Variables
 
-uint8_t           last_msec      = 0;
-uint16_t          avg_cycle_msec = 0;
-uint8_t           max_cycle_msec = 0;
+uint8_t            last_msec      = 0;
+uint16_t           avg_cycle_msec = 0;
+uint8_t            max_cycle_msec = 0;
 
 // Flight Control Variables
 
-FlightState       flight_state = FLIGHT_SETUP;
+FlightState        flight_state   = FLIGHT_SETUP;
+static SetupState  setup_state    = SETUP_GYROS;
+static uint16_t    setup_cycles   = 0;
 
-Gyro              gyro[NUM_ROTATIONS];
-RotationEstimator rot_estimator[NUM_ROTATIONS];
+Gyro               gyro[NUM_ROTATIONS];
+RotationEstimator  rot_estimator[2];
+RotationIntegrator yaw_estimator;
 
-PID               rot_rate_pid[NUM_ROTATIONS];
-PID               rot_pid[NUM_ROTATIONS];
-
-float             receiver_rot_rate_gain = 0.002;  // (rad/sec)
+PID                rot_rate_pid[NUM_ROTATIONS];
+PID                rot_pid[NUM_ROTATIONS];
+ 
+float              receiver_rot_rate_gain = 0.002;  // (rad/sec)
                     // Multiplies the receiver rotation command (cenetered)
                     // to generate target rotation rate
-float             receiver_rot_gain      = 0.002;  // (rad)
+float              receiver_rot_gain      = 0.002;  // (rad)
                     // Multiplies the receiver rotation command (cenetered)
                     // to generate target rotation
-uint16_t          receiver_rot_limit     = 100;
+uint16_t           receiver_rot_limit     = 100;
                     // When the receiver rotation command is within +/- this
                     // limit from the center, the quad is stabilized for
                     // rotation.  Beyond this, it is stabilized for rotation
@@ -155,6 +158,21 @@ void flight_control_write_eeprom(void)
 };
 
 
+//=============================== flight_init() ===============================
+//
+// Initializations before entering FLIGHT_SETUP state
+//
+
+void flight_init(void)
+
+{
+  flight_state = FLIGHT_SETUP;
+  setup_state = SETUP_GYROS;
+  setup_cycles = 0;
+  indicators_set(IND_SETUP);
+}
+
+
 //=============================== setup() =====================================
 //
 // Arduino Initialization
@@ -191,7 +209,6 @@ void setup()
 
   // Rotation Estimators
   
-  RotationEstimator::set_cycle(CONTROL_LOOP_CYCLE_SEC);
   eeprom_addr = RotationEstimator::read_eeprom(eeprom_addr, 1);
 
   // PIDs
@@ -214,11 +231,11 @@ void setup()
                                            3.0);  // windup_guard (rad/sec)
   };
 
-  indicators_set(IND_SETUP);
-
   delay(1000);  // 1 second delay before we start.  Allows things such as
                 // battery monitor, various filters to stabilize.
   
+  flight_init();
+
   //last_msec = adc_cycles;
   last_msec = millis();
 }
@@ -234,27 +251,31 @@ void loop()
 {
   // Static Local Variables
   
-  static uint16_t    setup_cycles                = 0;
-  static SetupState  setup_state                 = SETUP_GYROS;
   static BatStatus   bat_status                  = BAT_OK;
+                          // Battery status
+  static boolean     is_receiver_yaw_command_near_zero = true;
+                          // Yaw stick is near the center
 
   // Local Variables
   
   uint8_t            current_msec;
+                          // Current time
   uint8_t            cycle_msec;
+                          // Measured cycle time
   int16_t            receiver_rot_command[NUM_ROTATIONS];
                           // Rotation command input from the reciever
   int16_t            rot_measurement[NUM_ROTATIONS];
                           // Rotations, as measured by the accelerometers.
                           // Scale is defined by ROT_SCALE_RAD
-  int16_t            rot_estimate;
+  int16_t            rot_estimate[NUM_ROTATIONS];
                           // Rotation, as estimated based on gyro and
                           // accelerometer measurements.
                           // Scale is defined by ROT_SCALE_RAD
-  //float              rot_error[NUM_ROTATIONS];        // (rad)
-  float              rot_rate_error;   // (rad/sec)
-  uint8_t            rot;                             // Rotation index
+  float              rot_rate_error;
+                          // Rotation rate error (command - measurement) (rad/sec)
+  uint8_t            rot; // Rotation index
   BatStatus          new_bat_status;
+                          // New battery status, as read
   
 
   //---------------------------------------------------------------------------
@@ -364,12 +385,9 @@ void loop()
     // TODO:  Same if Gyros are stable but only after flight.
     // Minimum throttle + yaw stick left indicates immediate stop.
     // Kill the motors and return to the setup phase.
-  
+
     motors_disable();
-    flight_state = FLIGHT_SETUP;
-    setup_state = SETUP_GYROS;
-    setup_cycles = 0;
-    indicators_set(IND_SETUP);
+    flight_init();
   }
 
   else if (flight_state == FLIGHT_SETUP)
@@ -416,6 +434,12 @@ void loop()
             gyro[ROLL].zero();
             gyro[YAW].zero();
 
+            // Reset the rotation estimators
+
+            rot_estimator[ROLL].reset();
+            rot_estimator[PITCH].reset();
+            yaw_estimator.reset();
+            
             // Advance to next sub-state
             
             indicators_set(IND_SETUP_NEXT1);
@@ -511,7 +535,7 @@ void loop()
             // Now we have the minimum and maximum, we can calculate the range factor
             
             receiver_throttle.calculate_throttle_motor_factor();
-            
+
             indicators_set(IND_ARMING);
             setup_state = SETUP_ARMING;
             setup_cycles = 0;
@@ -573,6 +597,8 @@ void loop()
     // Flight Phase
     //-------------------------------------------------------------------------
 
+    // Get the receiver inputs
+    
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
       receiver_rot_command[rot] = receiver_rot[rot].get_rotation();
@@ -582,23 +608,50 @@ void loop()
     
     accel_get_rotations(rot_measurement);
 
-    // For yaw, if the stick is in the middle assume a zero yaw rotation is
-    // "measured" by the operator.  Else, assume no measurement.
+    // Estimate the roll & pitch rotations based on measurements
+    
+    for (rot = ROLL; rot <= PITCH; rot++)
+    {
+      rot_estimate[rot] = 
+        rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
+                                    rot_measurement[rot]);
+    };
+    
+    // For yaw, we don't have a real rotation angle measurement.  If the stick
+    // has just been returned to the center, assume the operator has just
+    // finished a yaw command, and set this point to be the zero rotation point.
+    // Else, just integrate the gyro measurement.
     
     if ((receiver_rot_command[YAW] <= (int16_t) RECEIVER_YAW_ZERO_MAX) &&
         (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_ZERO_MAX))
-      rot_measurement[YAW] = 0;
+    {
+      // Yaw stick is currently near the center
+      
+      if (! is_receiver_yaw_command_near_zero)
+      {
+        // Yaw stick was not near the center last time
+        
+        yaw_estimator.reset();
+        rot_estimate[YAW] = 0;
+      }
+
+      is_receiver_yaw_command_near_zero = true;
+    }
+    
     else
-      rot_measurement[YAW] = ROT_NONE;
+    {
+      // Yaw stick is not near the center
+      
+      rot_estimate[YAW] = yaw_estimator.estimate(gyro[YAW].get_rad_per_sec());
+
+      is_receiver_yaw_command_near_zero = false;
+    };
+
+    // Calcluate rotation and rotation rate errors (command - estimation)
+    // and use PID to calculate motor commands
     
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
-      // Estimate the rotation based on measurements
-      
-      rot_estimate = 
-        rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
-                                    rot_measurement[rot]);
-
       // Read rotation command and calculate error
       
       rot_rate_error = 
@@ -614,16 +667,20 @@ void loop()
           (receiver_rot_command[rot] <= (int16_t) receiver_rot_limit)  &&
           (receiver_rot_command[rot] >= (int16_t)-receiver_rot_limit))
       {
-        // Stable mode
+        // Stable mode: use rotation estimations and rotation rates
 
         // TODO: rot_error calculation based on receiver_rot_gain
 
         motor_rot_command[rot] = rot_rate_pid[rot].update_pd_i(rot_rate_error,
-                                                               -rot_estimate);
+                                                               -rot_estimate[rot]);
       }
 
       else
+      {
+        // Acrobatic mode: use only rotation rates
+        
         motor_rot_command[rot] = rot_rate_pid[rot].update_pd(rot_rate_error);
+      };
         
 #if PRINT_MOTOR_ROT_COMMAND           
       Serial.print(motor_rot_command[rot]);
