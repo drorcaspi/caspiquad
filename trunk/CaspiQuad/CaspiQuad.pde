@@ -85,10 +85,10 @@ RotationIntegrator yaw_estimator;
 PID                rot_rate_pid[NUM_ROTATIONS];
 PID                rot_pid[NUM_ROTATIONS];
  
-float              receiver_rot_rate_gain = 0.002;  // (rad/sec)
+float              receiver_rot_rate_gain = 0.003;  // (rad/sec)
                     // Multiplies the receiver rotation command (cenetered)
                     // to generate target rotation rate
-float              receiver_rot_gain      = 0.002;  // (rad)
+uint8_t            receiver_rot_gain      = 9;
                     // Multiplies the receiver rotation command (cenetered)
                     // to generate target rotation
 uint16_t           receiver_rot_limit     = 100;
@@ -132,9 +132,9 @@ flight_control_read_eeprom(void)
   {
     receiver_rot_rate_gain = eeprom_read_float(eeprom_base_addr);
     eeprom_base_addr += sizeof(float);
-    receiver_rot_gain = eeprom_read_float(eeprom_base_addr);
+    receiver_rot_gain = (uint8_t)eeprom_read_float(eeprom_base_addr);
     eeprom_base_addr += sizeof(float);
-    receiver_rot_limit = eeprom_read_float(eeprom_base_addr);
+    receiver_rot_limit = (uint16_t)eeprom_read_float(eeprom_base_addr);
     eeprom_base_addr += sizeof(float);
   }
   
@@ -152,9 +152,9 @@ void flight_control_write_eeprom(void)
   eeprom_write_float(EEPROM_FLIGHT_CONTROL_BASE_ADDR,
                      receiver_rot_rate_gain);
   eeprom_write_float(EEPROM_FLIGHT_CONTROL_BASE_ADDR + sizeof(float),
-                     receiver_rot_gain);
+                     (float)receiver_rot_gain);
   eeprom_write_float(EEPROM_FLIGHT_CONTROL_BASE_ADDR + (2 * sizeof(float)),
-                     receiver_rot_limit);
+                     (float)receiver_rot_limit);
 };
 
 
@@ -209,26 +209,36 @@ void setup()
 
   // Rotation Estimators
   
-  eeprom_addr = RotationEstimator::read_eeprom(eeprom_addr, 1);
+  eeprom_addr = RotationEstimator::read_eeprom(eeprom_addr,
+                                               0.5);   // bw
 
   // PIDs
   
-  for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-  {
-    eeprom_addr = rot_rate_pid[rot].read_eeprom(eeprom_addr,
-                                                1,    // P
-                                                0,    // I
-                                               -50,   // D
-                                                3.0); // windup_guard (rad/sec/sec)
-  };
+  eeprom_addr = rot_rate_pid[ROLL ].read_eeprom(eeprom_addr,
+                                                30,    // P
+                                                 0.01, // I
+                                                40,    // D
+                                                 0);   // windup_guard - NOT USED
+  eeprom_addr = rot_rate_pid[PITCH].read_eeprom(eeprom_addr,
+                                                30,    // P
+                                                 0.01, // I
+                                                40,    // D
+                                                 0);   // windup_guard - NOT USED
+  eeprom_addr = rot_rate_pid[YAW  ].read_eeprom(eeprom_addr,
+                                                80,    // P
+                                                 0.003,// I
+                                                 0,    // D
+                                                 0);   // windup_guard - NOT USED
 
+  // TODO: rot_pid is not used, remove it!
+  
   for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
   {
     eeprom_addr = rot_pid[rot].read_eeprom(eeprom_addr,
-                                           1.5,   // P
-                                           0,     // I
-                                          -30,    // D
-                                           3.0);  // windup_guard (rad/sec)
+                                           0,   // P
+                                           0,   // I
+                                           0,   // D
+                                           0);  // windup_guard (rad/sec)
   };
 
   delay(1000);  // 1 second delay before we start.  Allows things such as
@@ -264,6 +274,7 @@ void loop()
                           // Measured cycle time
   int16_t            receiver_rot_command[NUM_ROTATIONS];
                           // Rotation command input from the reciever
+  int16_t            temp_receiver_rot_command;
   int16_t            rot_measurement[NUM_ROTATIONS];
                           // Rotations, as measured by the accelerometers.
                           // Scale is defined by ROT_SCALE_RAD
@@ -271,8 +282,14 @@ void loop()
                           // Rotation, as estimated based on gyro and
                           // accelerometer measurements.
                           // Scale is defined by ROT_SCALE_RAD
+  int16_t            rot_error;
+                          // Rotation error (command - measurement)
+                          // Scale is defined by ROT_SCALE_RAD
   float              rot_rate_error;
                           // Rotation rate error (command - measurement) (rad/sec)
+  boolean            receiver_controls_rot;
+                          // If true, receiver controls rotation, else it
+                          // control rotation rate
   uint8_t            rot; // Rotation index
   BatStatus          new_bat_status;
                           // New battery status, as read
@@ -622,6 +639,8 @@ void loop()
     // finished a yaw command, and set this point to be the zero rotation point.
     // Else, just integrate the gyro measurement.
     
+    rot_estimate[YAW] = yaw_estimator.estimate(gyro[YAW].get_rad_per_sec());
+    
     if ((receiver_rot_command[YAW] <= (int16_t) RECEIVER_YAW_ZERO_MAX) &&
         (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_ZERO_MAX))
     {
@@ -641,49 +660,103 @@ void loop()
     else
     {
       // Yaw stick is not near the center
-      
-      rot_estimate[YAW] = yaw_estimator.estimate(gyro[YAW].get_rad_per_sec());
 
       is_receiver_yaw_command_near_zero = false;
     };
 
-    // Calcluate rotation and rotation rate errors (command - estimation)
-    // and use PID to calculate motor commands
+
+    // PID Control using Rotation & Rotation Rate
+    // ==========================================
+    //
+    // Interpretation of Receiver Roll, Pitch and Yaw Inputs
+    // -----------------------------------------------------
+    //
+    // For roll & pitch, if the receiver input is near the center (within
+    // receiver_rot_limit) then it controls rotation angle.  Outside that
+    // range, receiver input controls rotation rate.
+    //
+    // Receiver gear channel overrides this, so receiver input always controls
+    // rotation rate.
+    // 
+    // For yaw, receiver input always controls yaw rate.
+    //
+    // Consideration of Rotation Estimation
+    // ------------------------------------
+    //
+    // For all 3 rotations (roll, pitch & yaw), if the receiver input is near
+    // the center (within receiver_rot_limit) then the rotation estimation is
+    // fed into the I leg of the PID.  Outside that range, the I input is 0.
     
     for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
     {
-      // Read rotation command and calculate error
+      temp_receiver_rot_command = receiver_rot_command[rot];
+      rot_error = -rot_estimate[rot];
+      rot_rate_error = -gyro[rot].get_rad_per_sec();
       
-      rot_rate_error = 
-        ((float)receiver_rot_command[rot] * receiver_rot_rate_gain) -
-        gyro[rot].get_rad_per_sec();
+      if ((rot != YAW) && (! receiver_get_boolean(GEAR_CH)))
+        receiver_controls_rot = true;
+      else
+        receiver_controls_rot = false;
 
-#if PRINT_ROT_ERROR
-      Serial.print(rot_rate_error);
-      Serial.print("\t");
-#endif
-
-      if (receiver_get_boolean(GEAR_CH)                                &&
-          (receiver_rot_command[rot] <= (int16_t) receiver_rot_limit)  &&
-          (receiver_rot_command[rot] >= (int16_t)-receiver_rot_limit))
+      if (temp_receiver_rot_command >= (int16_t)receiver_rot_limit)
       {
-        // Stable mode: use rotation estimations and rotation rates
+        // We're above the center range
+        
+        if (receiver_controls_rot)
+        {
+          receiver_controls_rot = false;
 
-        // TODO: rot_error calculation based on receiver_rot_gain
+          // Receiver command is zero at the range limit 
+          
+          temp_receiver_rot_command -= (int16_t)receiver_rot_limit;
+        }
 
-        motor_rot_command[rot] = rot_rate_pid[rot].update_pd_i(rot_rate_error,
-                                                               -rot_estimate[rot]);
+        rot_error = 0;  // Do not consider rotation estimation
+      }
+
+      else if (temp_receiver_rot_command <= -(int16_t)receiver_rot_limit)
+      {
+        // We're below the center range
+        
+        if (receiver_controls_rot)
+        {
+          receiver_controls_rot = false;
+
+          // Receiver command is zero at the range limit 
+          
+          temp_receiver_rot_command += (int16_t)receiver_rot_limit;
+        }
+
+        rot_error = 0;  // Do not consider rotation estimation
+      };
+      
+      if (receiver_controls_rot)
+      {
+        // Receiver input control rotation angle
+        
+        rot_error += temp_receiver_rot_command * receiver_rot_gain;
       }
 
       else
       {
-        // Acrobatic mode: use only rotation rates
+        // Receiver input controls rotation rate
         
-        motor_rot_command[rot] = rot_rate_pid[rot].update_pd(rot_rate_error);
+        rot_rate_error += (float)temp_receiver_rot_command *
+                          receiver_rot_rate_gain;
       };
-        
+
+#if PRINT_ROT_ERROR
+      Serial.print(rot_error, DEC);
+      Serial.print("\t");
+      Serial.print(rot_rate_error);
+      Serial.print("\t");
+#endif
+
+      motor_rot_command[rot] = rot_rate_pid[rot].update_pd_i(rot_rate_error,
+                                                             rot_error);
+      
 #if PRINT_MOTOR_ROT_COMMAND           
-      Serial.print(motor_rot_command[rot]);
+      Serial.print(motor_rot_command[rot], DEC);
       Serial.print("\t");
 #endif
     };

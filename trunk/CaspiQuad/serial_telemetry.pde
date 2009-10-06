@@ -43,8 +43,9 @@
 
 #define SENSOR_DISPLAY_RANGE                  1000
 
-#define RECEIVER_ROT_GAIN_DISPLAY_FACTOR      1000
 #define RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR  100
+
+#define I_DISPLAY_FACTOR                      1000
 
 #define MOTOR_COMMAND_DISPLAY_MIN             1000
 #define MOTOR_COMMAND_DISPLAY_MAX             2000
@@ -144,12 +145,12 @@ handle_serial_telemetry(char query)    // In:  Query
     // Receive roll and pitch rotation rate (gyro) PID setting
 
     rot_rate_pid[ROLL].set_p(serial_read_float());
-    rot_rate_pid[ROLL].set_i(serial_read_float()/1000);
+    rot_rate_pid[ROLL].set_i(serial_read_float() / I_DISPLAY_FACTOR);
     rot_rate_pid[ROLL].set_d(serial_read_float());
     rot_rate_pid[ROLL].reset();
     
     rot_rate_pid[PITCH].set_p(serial_read_float());
-    rot_rate_pid[PITCH].set_i(serial_read_float()/1000);
+    rot_rate_pid[PITCH].set_i(serial_read_float() / I_DISPLAY_FACTOR);
     rot_rate_pid[PITCH].set_d(serial_read_float());
     rot_rate_pid[PITCH].reset();
 
@@ -159,7 +160,7 @@ handle_serial_telemetry(char query)    // In:  Query
     // Receive yaw rotation rate (gyro) PID settings
     
     rot_rate_pid[YAW].set_p(serial_read_float());
-    rot_rate_pid[YAW].set_i(serial_read_float()/1000);
+    rot_rate_pid[YAW].set_i(serial_read_float() / I_DISPLAY_FACTOR);
     rot_rate_pid[YAW].set_d(serial_read_float());
     rot_rate_pid[YAW].reset();
 
@@ -183,9 +184,9 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'G':
     // Receive auto level configuration values
     
-    receiver_rot_gain = serial_read_float() / RECEIVER_ROT_GAIN_DISPLAY_FACTOR;  // levelLimit
+    receiver_rot_gain = (uint8_t)serial_read_float();  // levelLimit
     
-    receiver_rot_limit = serial_read_float();  // levelOff
+    receiver_rot_limit = (uint16_t)serial_read_float();  // levelOff
 
     break;
    
@@ -243,13 +244,13 @@ handle_serial_telemetry(char query)    // In:  Query
 
     Serial.print(rot_rate_pid[ROLL].get_p());
     print_comma();
-    Serial.print(rot_rate_pid[ROLL].get_i()*1000);
+    Serial.print(rot_rate_pid[ROLL].get_i() * I_DISPLAY_FACTOR);
     print_comma();
     Serial.print(rot_rate_pid[ROLL].get_d());
     print_comma();
     Serial.print(rot_rate_pid[PITCH].get_p());
     print_comma();
-    Serial.print(rot_rate_pid[PITCH].get_i()*1000);
+    Serial.print(rot_rate_pid[PITCH].get_i() * I_DISPLAY_FACTOR);
     print_comma();
     Serial.println(rot_rate_pid[PITCH].get_d());
 
@@ -260,7 +261,7 @@ handle_serial_telemetry(char query)    // In:  Query
     
     Serial.print(rot_rate_pid[YAW].get_p());
     print_comma();
-    Serial.print(rot_rate_pid[YAW].get_i()*1000);
+    Serial.print(rot_rate_pid[YAW].get_i() * I_DISPLAY_FACTOR);
     print_comma();
     Serial.println(rot_rate_pid[YAW].get_d());  
     break;
@@ -284,7 +285,7 @@ handle_serial_telemetry(char query)    // In:  Query
   case 'H':
     // Send auto level configuration values
     
-    Serial.print((int16_t)(receiver_rot_gain * RECEIVER_ROT_GAIN_DISPLAY_FACTOR), DEC);  // levelLimit
+    Serial.print(receiver_rot_gain, DEC);  // levelLimit
     
     print_comma();
     Serial.println(receiver_rot_limit);  // levelOff
