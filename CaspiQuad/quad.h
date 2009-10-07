@@ -28,8 +28,12 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
+#include <stdlib.h>
+#include <math.h>
+#include "hardware_serial2.h"
 #include "WProgram.h"
 #include "quad_hw.h"
+
 
 //=============================================================================
 //

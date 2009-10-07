@@ -26,6 +26,7 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include "motors.h"
 #include "receiver.h"
 #include "pcint.h"
 
