@@ -26,6 +26,7 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include "adc.h"
 #include "bat_sensor.h"
 
 
@@ -37,8 +38,8 @@
 
 // Sensor output voltage thresholds, in volts
 
-#define BAT_SENSOR_WARN_THR_V          2.0   // TODO: ????????
-#define BAT_SENSOR_LOW_THR_V           1.0   // TODO: ????????
+//#define BAT_SENSOR_WARN_THR_V          2.0   // TODO: ????????
+//#define BAT_SENSOR_LOW_THR_V           1.0   // TODO: ????????
 
 // Derived Definitions in Numbers
 

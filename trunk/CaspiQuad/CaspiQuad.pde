@@ -1,6 +1,5 @@
-#include <stdlib.h>
-#include <math.h>
 #include <EEPROM.h>
+#include <Wire.h>
 
 #include "quad.h"
 #include "adc.h"
@@ -54,7 +53,11 @@ typedef enum
 // Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
 // correct (yaw is 0)
 
-#define RECEIVER_YAW_ZERO_MAX  32
+#define RECEIVER_YAW_ZERO_MAX 32
+
+// Cycle period for continuous queries
+
+#define CONT_QUERY_CYCLE_MSEC 100
 
 
 //=============================================================================
@@ -114,7 +117,7 @@ int16_t           motor_rot_command[NUM_ROTATIONS];
 // Telemetry Variables
 
 char              query;
-boolean           cont_query = false;
+uint8_t           query_cycle_counter = 0;
 
 
 //============================== read_eeprom() ==============================
@@ -794,14 +797,20 @@ void loop()
   if (Serial.available())
   {
     query = Serial.read();
-    cont_query = true;
+    query_cycle_counter = 1;   // Force the processing of the query
   }
 
   // New or continuous command
   
-  if (cont_query)
+  if (query_cycle_counter == 1)
   {
-    cont_query = handle_serial_telemetry(query);
+    if (handle_serial_telemetry(query))
+      query_cycle_counter = CONT_QUERY_CYCLE_MSEC / CONTROL_LOOP_CYCLE_MSEC;
+    else
+      query_cycle_counter = 0;
   }
+
+  else if (query_cycle_counter > 1)
+    query_cycle_counter--;
 #endif
 }

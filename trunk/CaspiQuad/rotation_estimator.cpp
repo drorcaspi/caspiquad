@@ -32,6 +32,7 @@
 
 #include "quad.h"
 #include "accel.h"
+#include "eeprom_utils.h"
 #include "rotation_estimator.h"
 
 

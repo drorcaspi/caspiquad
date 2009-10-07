@@ -47,7 +47,7 @@
  * A0-A5 (D14-D19) = PCINT 8-13 = PCIR1 = PC = PCIE1 = pcmsk1
  *---------------------------------------------------------------------------*/
 
-
+#include "WProgram.h"
 #include <pins_arduino.h>
 #include "pcint.h"
 
