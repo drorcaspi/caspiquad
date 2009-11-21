@@ -752,8 +752,11 @@ void loop()
       Serial.print("\t");
 #endif
 
-      motor_rot_command[rot] = rot_rate_pid[rot].update_pd_i(rot_rate_error,
-                                                             rot_error);
+      float temp_motor_rot_command = rot_rate_pid[rot].update_pd_i(rot_rate_error, rot_error);
+      motor_rot_command[rot] =
+        constrain(temp_motor_rot_command,
+                  (float)MOTOR_ROTATION_RATE_MIN,
+                  (float)MOTOR_ROTATION_RATE_MAX);
       
 #if PRINT_MOTOR_ROT_COMMAND           
       Serial.print(motor_rot_command[rot], DEC);
