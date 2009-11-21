@@ -1,5 +1,6 @@
+#include <stdlib.h>
+#include <math.h>
 #include <EEPROM.h>
-#include <Wire.h>
 
 #include "quad.h"
 #include "adc.h"
@@ -10,7 +11,6 @@
 #include "receiver.h"
 #include "pid.h"
 #include "rotation_estimator.h"
-#include "accel_translation.h"
 #include "indicators.h"
 #include "serial_telemetry.h"
 #include "eeprom_utils.h"
@@ -54,11 +54,7 @@ typedef enum
 // Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
 // correct (yaw is 0)
 
-#define RECEIVER_YAW_ZERO_MAX 32
-
-// Cycle period for continuous queries
-
-#define CONT_QUERY_CYCLE_MSEC 100
+#define RECEIVER_YAW_ZERO_MAX  32
 
 
 //=============================================================================
@@ -118,7 +114,7 @@ int16_t           motor_rot_command[NUM_ROTATIONS];
 // Telemetry Variables
 
 char              query;
-uint8_t           query_cycle_counter = 0;
+boolean           cont_query = false;
 
 
 //============================== read_eeprom() ==============================
@@ -294,9 +290,6 @@ void loop()
   boolean            receiver_controls_rot;
                           // If true, receiver controls rotation, else it
                           // control rotation rate
-  float              temp_motor_rot_command;
-                          // Temporarily holds the motor rotation command before
-                          // converting to int16_t
   uint8_t            rot; // Rotation index
   BatStatus          new_bat_status;
                           // New battery status, as read
@@ -671,18 +664,7 @@ void loop()
       is_receiver_yaw_command_near_zero = false;
     };
 
-#ifdef ESTIMATE_EARTH_ACCEL
-    // Following is a test code that estimates earth-axis acceleration
-    
-    {
-      int8_t accel_data[NUM_AXES];
 
-      
-      accel_get_current(accel_data);
-      estimate_earth_z_accel(accel_data, rot_estimate);
-    };
-#endif
-    
     // PID Control using Rotation & Rotation Rate
     // ==========================================
     //
@@ -770,20 +752,8 @@ void loop()
       Serial.print("\t");
 #endif
 
-      // Do the PID for this rotation axis
-
-      temp_motor_rot_command = rot_rate_pid[rot].update_pd_i(rot_rate_error,
+      motor_rot_command[rot] = rot_rate_pid[rot].update_pd_i(rot_rate_error,
                                                              rot_error);
-
-      // Constrain the rotation command to the minimum and maximum legal
-      // values before converting to int16_t.  This ensures no overflow nor
-      // underflow happens.
-      // TODO: motor_rot_command() does this constrain again (but in int16_t)
-      // TODO: eliminate the double work.
-
-      motor_rot_command[rot] = constrain(temp_motor_rot_command,
-                                         (float)MOTOR_ROTATION_RATE_MIN,
-                                         (float)MOTOR_ROTATION_RATE_MAX);
       
 #if PRINT_MOTOR_ROT_COMMAND           
       Serial.print(motor_rot_command[rot], DEC);
@@ -824,20 +794,14 @@ void loop()
   if (Serial.available())
   {
     query = Serial.read();
-    query_cycle_counter = 1;   // Force the processing of the query
+    cont_query = true;
   }
 
   // New or continuous command
   
-  if (query_cycle_counter == 1)
+  if (cont_query)
   {
-    if (handle_serial_telemetry(query))
-      query_cycle_counter = CONT_QUERY_CYCLE_MSEC / CONTROL_LOOP_CYCLE_MSEC;
-    else
-      query_cycle_counter = 0;
+    cont_query = handle_serial_telemetry(query);
   }
-
-  else if (query_cycle_counter > 1)
-    query_cycle_counter--;
 #endif
 }
