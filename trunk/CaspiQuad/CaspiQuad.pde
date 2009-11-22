@@ -14,6 +14,7 @@
 #include "indicators.h"
 #include "serial_telemetry.h"
 #include "eeprom_utils.h"
+#include "flight_control.h"
 
 
 //=============================================================================
@@ -55,10 +56,6 @@ typedef enum
 // correct (yaw is 0)
 
 #define RECEIVER_YAW_ZERO_MAX 32
-
-// Cycle period for continuous queries
-
-#define CONT_QUERY_CYCLE_MSEC 100
 
 
 //=============================================================================
@@ -115,13 +112,8 @@ ReceiverThrottle receiver_throttle;
 int16_t           motor_throttle_command;
 int16_t           motor_rot_command[NUM_ROTATIONS];
 
-// Telemetry Variables
 
-char              query;
-uint8_t           query_cycle_counter = 0;
-
-
-//============================== read_eeprom() ==============================
+//====================== flight_control_read_eeprom() =========================
 //
 // Read the configuration parameters from EEPROM, if valid.  If not, set
 // defaults.
@@ -146,7 +138,7 @@ flight_control_read_eeprom(void)
 };
 
 
-//============================== write_eeprom() =============================
+//====================== flight_control_write_eeprom() ========================
 //
 // Write the configuration parameters to EEPROM
 
@@ -819,25 +811,6 @@ void loop()
   //---------------------------------------------------------------------------
   
 #if SUPPORT_TELEMENTRY 
-  // Check for a new serial command
-  
-  if (Serial.available())
-  {
-    query = Serial.read();
-    query_cycle_counter = 1;   // Force the processing of the query
-  }
-
-  // New or continuous command
-  
-  if (query_cycle_counter == 1)
-  {
-    if (handle_serial_telemetry(query))
-      query_cycle_counter = CONT_QUERY_CYCLE_MSEC / CONTROL_LOOP_CYCLE_MSEC;
-    else
-      query_cycle_counter = 0;
-  }
-
-  else if (query_cycle_counter > 1)
-    query_cycle_counter--;
+  handle_serial_telemetry();
 #endif
 }
