@@ -1,9 +1,9 @@
-#ifndef __SERIAL_TELEMETRY_H__
-#define __SERIAL_TELEMETRY_H__
+#ifndef __FLIGHT_CONTROL_H__
+#define __FLIGHT_CONTROL_H__
 
 //=============================================================================
 //
-// Serial Telemetry API
+// Flight Control API
 //
 //=============================================================================
 
@@ -28,14 +28,43 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
+//=============================================================================
+//
+// Public Definitions
+//
+//=============================================================================
 
+                      
 
 //=============================================================================
 //
-// Handles a serial telemetry query
+// Public Variables
+//
+//=============================================================================
 
-void
-handle_serial_telemetry(void);
+// TODO: these variables are accessed by serial_telemetry.cpp, should be
+// TODO: replaced by accessor functions
+
+extern uint16_t           avg_cycle_msec;
+extern uint8_t            max_cycle_msec;
+
+extern Gyro               gyro[NUM_ROTATIONS];
+extern RotationEstimator  rot_estimator[2];
+extern RotationIntegrator yaw_estimator;
+
+extern PID                rot_rate_pid[NUM_ROTATIONS];
+extern PID                rot_pid[NUM_ROTATIONS];
+
+extern float              receiver_rot_rate_gain;  // (rad/sec)
+extern uint8_t            receiver_rot_gain;
+extern uint16_t           receiver_rot_limit;
+
+//=============================================================================
+//
+// Public Functions
+//
+//=============================================================================
+
 
 
 #endif
