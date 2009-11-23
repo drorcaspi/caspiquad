@@ -1,4 +1,4 @@
-#ifdef ESTIMATE_EARTH_ACCEL
+#if ESTIMATE_EARTH_ACCEL
 //=============================================================================
 //
 // Acceleration Translation to Earth Axes

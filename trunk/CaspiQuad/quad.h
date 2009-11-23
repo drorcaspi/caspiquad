@@ -41,7 +41,8 @@
 //
 //=============================================================================
 
-#define ESTIMATE_EARTH_ACCEL
+#define ESTIMATE_EARTH_ACCEL      0
+#define SUPPORT_TELEMENTRY        1
 
 
 //=============================================================================
@@ -57,7 +58,7 @@
 #define PRINT_RECEIVER_ROT        0
 #define PRINT_RECEIVER_THROTTLE   0
 #define PRINT_ACCEL               0
-#define PRINT_TRANSLATED_ACCEL    1
+#define PRINT_TRANSLATED_ACCEL    0
 #define PRINT_GYRO                0
 #define PRINT_ROT_ERROR           0
 #define PRINT_ROT_ESTIMATE        0
@@ -67,7 +68,8 @@
 #define PRINT_MOTOR_COMMAND       0
 #define PRINT_BAT_SENSOR          0
 #define PRINT_INDICATORS          0
-#define SUPPORT_TELEMENTRY        1
+
+#define INDICATORS_DEBUG_TEXT     1
 
 
 //=============================================================================

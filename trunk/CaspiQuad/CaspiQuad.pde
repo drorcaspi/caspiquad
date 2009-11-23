@@ -165,7 +165,7 @@ void flight_init(void)
   flight_state = FLIGHT_SETUP;
   setup_state = SETUP_GYROS;
   setup_cycles = 0;
-  indicators_set(IND_SETUP);
+  INDICATORS_SET(IND_SETUP);
 }
 
 
@@ -303,7 +303,7 @@ void loop()
   cycle_msec = (uint8_t)(current_msec - last_msec);
   
   if (cycle_msec > (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
-    indicators_set(IND_SW_WARN);
+    INDICATORS_SET(IND_SW_WARN);
 
   if (cycle_msec > max_cycle_msec)
     max_cycle_msec = cycle_msec;
@@ -360,9 +360,9 @@ void loop()
   {
     bat_status = new_bat_status;
     if (new_bat_status == BAT_LOW)
-      indicators_set(IND_BAT_LOW);
+      INDICATORS_SET(IND_BAT_LOW);
     else
-      indicators_set(IND_BAT_WARN);
+      INDICATORS_SET(IND_BAT_WARN);
   }
   
   // Read the accelerometers
@@ -458,7 +458,7 @@ void loop()
             
             // Advance to next sub-state
             
-            indicators_set(IND_SETUP_NEXT1);
+            INDICATORS_SET(IND_SETUP_NEXT1);
             setup_state = SETUP_RECEIVER_ROTATIONS;
             setup_cycles = 0;
 
@@ -480,7 +480,7 @@ void loop()
             // The gyros should have stabilized by now.  Issue an error
             // indication
             
-            indicators_set(IND_SETUP_ERR);
+            INDICATORS_SET(IND_SETUP_ERR);
             setup_state = SETUP_ERR;
             setup_cycles = 0;
           };
@@ -504,7 +504,7 @@ void loop()
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
   
-            indicators_set(IND_SETUP_NEXT2);
+            INDICATORS_SET(IND_SETUP_NEXT2);
             setup_state = SETUP_RECEIVER_THROTTLE_MAX;
             setup_cycles = 0;
   
@@ -526,8 +526,7 @@ void loop()
           if ((receiver_throttle.find_max()) &&
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
-  
-            indicators_set(IND_SETUP_NEXT3);
+            INDICATORS_SET(IND_SETUP_NEXT3);
             setup_state = SETUP_RECEIVER_THROTTLE_MIN;
             setup_cycles = 0;
   
@@ -552,7 +551,7 @@ void loop()
             
             receiver_throttle.calculate_throttle_motor_factor();
 
-            indicators_set(IND_ARMING);
+            INDICATORS_SET(IND_ARMING);
             setup_state = SETUP_ARMING;
             setup_cycles = 0;
           }
@@ -561,7 +560,7 @@ void loop()
           {
             // Too long time has passed, issue an error indication and start over
             
-            indicators_set(IND_SETUP_ERR);
+            INDICATORS_SET(IND_SETUP_ERR);
             setup_state = SETUP_ERR;
             setup_cycles = 0;
           }
@@ -580,7 +579,7 @@ void loop()
           else
           {
             flight_state = FLIGHT_READY;
-            indicators_set(IND_FLIGHT);
+            INDICATORS_SET(IND_FLIGHT);
             motors_enable();
           };
           
@@ -601,7 +600,7 @@ void loop()
           break;
 
         default:
-          indicators_set(IND_SW_ERR);
+          INDICATORS_SET(IND_SW_ERR);
           flight_state = FLIGHT_ERROR;
       }
     }
@@ -663,7 +662,7 @@ void loop()
       is_receiver_yaw_command_near_zero = false;
     };
 
-#ifdef ESTIMATE_EARTH_ACCEL
+#if ESTIMATE_EARTH_ACCEL
     // Following is a test code that estimates earth-axis acceleration
     
     {
