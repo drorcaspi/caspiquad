@@ -34,6 +34,14 @@
 //
 //=============================================================================
 
+// Main Flight State
+
+typedef enum
+{
+  FLIGHT_ERROR,                 // Error, stop motors and wait for reset
+  FLIGHT_SETUP,                 // Setup before flight
+  FLIGHT_READY                  // Flying
+} FlightState;
                       
 
 //=============================================================================
@@ -44,6 +52,8 @@
 
 // TODO: these variables are accessed by serial_telemetry.cpp, should be
 // TODO: replaced by accessor functions
+
+extern FlightState        flight_state;
 
 extern uint16_t           avg_cycle_msec;
 extern uint8_t            max_cycle_msec;
@@ -59,12 +69,22 @@ extern float              receiver_rot_rate_gain;  // (rad/sec)
 extern uint8_t            receiver_rot_gain;
 extern uint16_t           receiver_rot_limit;
 
+extern ReceiverRotation   receiver_rot[NUM_ROTATIONS];
+
+extern int16_t            motor_throttle_command;
+extern int16_t            motor_rot_command[NUM_ROTATIONS];
+
 //=============================================================================
 //
 // Public Functions
 //
 //=============================================================================
 
+//====================== flight_control_write_eeprom() ========================
+//
+// Write the configuration parameters to EEPROM
+
+void flight_control_write_eeprom(void);
 
 
 #endif
