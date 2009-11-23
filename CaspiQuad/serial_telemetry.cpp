@@ -26,6 +26,8 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include "eeprom_utils.h"
+#include "receiver.h"
 #include "adc.h"
 #include "gyro.h"
 #include "accel.h"

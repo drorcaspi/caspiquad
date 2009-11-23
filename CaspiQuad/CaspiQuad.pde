@@ -31,15 +31,6 @@
 #define SETUP_ARMING_MIN_SEC    2.0
 #define SETUP_ERR_MIN_SEC       5.0
 
-// Main Flight State
-
-typedef enum
-{
-  FLIGHT_ERROR,                 // Error, stop motors and wait for reset
-  FLIGHT_SETUP,                 // Setup before flight
-  FLIGHT_READY                  // Flying
-} FlightState;
-
 // Sub-States of FLIGHT_SETUP
 
 typedef enum
