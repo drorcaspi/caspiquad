@@ -76,8 +76,28 @@ indicators_update(void);
 
 
 //========================= indicators_set() ==================================
-  
+//
+// Indicate a new status
+
 void
 indicators_set(IndicatorStatus status);  // In:  Status to indicate
+
+
+//========================= INDICATORS_SET() ==================================
+//
+// Macro wrapper to indicator_set() to log text to the serial line in debug
+// mode
+
+#if INDICATORS_DEBUG_TEXT
+#define INDICATORS_SET(_status) ({                           \
+                                   Serial.print(__FILE__);   \
+                                   Serial.print('#');        \
+                                   Serial.print(__LINE__);   \
+                                   Serial.print(": ");       \
+                                   Serial.println(#_status); \
+                                })
+#else
+#define INDICATORS_SET(_status) indicators_set(_status)
+#endif
 
 #endif
