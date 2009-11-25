@@ -37,19 +37,20 @@
 
 typedef enum
 {
-  IND_NONE,
-  IND_SETUP,       // Normal mode after power up
-  IND_SETUP_NEXT1, // Prompt to do next step of setup
-  IND_SETUP_NEXT2, // Prompt to do next step of setup
-  IND_SETUP_NEXT3, // Prompt to do next step of setup
-  IND_SETUP_ERR,   // Some error in setup, e.g., gyros not stable
-  IND_ARMING,      // Warning - arming motors
-  IND_FLIGHT,      // Everything ready & armed, motors running
-  IND_BAT_WARN,    // Battery warning
-  IND_BAT_LOW,     // Battery empty
-  IND_HW_ERR,      // Hardware error, e.g., can't read accelerometers 
-  IND_SW_WARN,     // Software warning (e.g., didn't complete main cycle on time)
-  IND_SW_ERR       // Software error
+  IND_NONE                            =  0,
+  IND_SETUP                           =  1, // Normal mode after power up
+  IND_SETUP_NEXT1                     =  2, // Prompt to do next step of setup
+  IND_SETUP_NEXT2                     =  3, // Prompt to do next step of setup
+  IND_SETUP_NEXT3                     =  4, // Prompt to do next step of setup
+  IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT =  5, // Some error in setup, e.g., gyros not stable
+  IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT  =  6, // Timeout waiting for throttle @ min
+  IND_ARMING                          =  7, // Warning - arming motors
+  IND_FLIGHT                          =  8, // Everything ready & armed, motors running
+  IND_BAT_WARN                        =  9, // Battery warning
+  IND_BAT_LOW                         = 10, // Battery empty
+  IND_HW_ERR_ACCEL_INIT               = 11, // Hardware error: can't read accelerometers 
+  IND_SW_WARN_LOOP_CYCLE              = 12, // Software warning: didn't complete main cycle on time
+  IND_SW_ERR                          = 13  // Software error
 } IndicatorStatus;
 
 
@@ -82,22 +83,5 @@ indicators_update(void);
 void
 indicators_set(IndicatorStatus status);  // In:  Status to indicate
 
-
-//========================= INDICATORS_SET() ==================================
-//
-// Macro wrapper to indicator_set() to log text to the serial line in debug
-// mode
-
-#if INDICATORS_DEBUG_TEXT
-#define INDICATORS_SET(_status) ({                           \
-                                   Serial.print(__FILE__);   \
-                                   Serial.print('#');        \
-                                   Serial.print(__LINE__);   \
-                                   Serial.print(": ");       \
-                                   Serial.println(#_status); \
-                                })
-#else
-#define INDICATORS_SET(_status) indicators_set(_status)
-#endif
 
 #endif

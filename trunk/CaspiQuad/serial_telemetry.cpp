@@ -162,9 +162,18 @@ handle_serial_telemetry(void)
   is_command = false;
   while ((Serial.available() > 0) && (! is_command))
   {
+#if PRINT_TELEMETRY
+    Serial.print(i_command_line, DEC);
+    Serial.print('\t');
+#endif
     new_char = Serial.read();
     command_line[i_command_line++] = new_char;
-    is_command = (i_command_line >= sizeof(command_line)) || (new_char == '\n');
+#if PRINT_TELEMETRY
+    Serial.println((int)new_char, HEX);
+#endif
+    is_command = (i_command_line >= sizeof(command_line)) ||
+                 (new_char == '\r')                       ||
+                 (new_char == '\n');
 
     // Whenever any character is read, previous outstanding commands are cancelled
     
@@ -174,7 +183,7 @@ handle_serial_telemetry(void)
 
   if (is_command)
   {
-    // A new command line has been recieved
+    // A new command line has been received
     
     query = command_line[0];
     p_command_line = &command_line[1];

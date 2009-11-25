@@ -120,8 +120,14 @@ accel_init(void)
     who_am_i_val = Wire.receive();
   };
 
-  if (who_am_i_val != LIS302DL_WHO_AM_I_VALUE)
+  if (who_am_i_val != (uint8_t)LIS302DL_WHO_AM_I_VALUE)
+  {
+#if PRINT_ACCEL
+    Serial.print("ACC WAI: ");
+    Serial.println(who_am_i_val, HEX);
+#endif
     return false;
+  }
 
   // Write CTRL_REG1    
   Wire.beginTransmission(LIS302DL_0_ADDRESS);

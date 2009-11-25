@@ -156,7 +156,7 @@ void flight_init(void)
   flight_state = FLIGHT_SETUP;
   setup_state = SETUP_GYROS;
   setup_cycles = 0;
-  INDICATORS_SET(IND_SETUP);
+  indicators_set(IND_SETUP);
 }
 
 
@@ -179,7 +179,8 @@ void setup()
   indicators_init();
   eeprom_init();
   motors_init();
-  accel_init();   // TODO: check return value, indicate error if FALSE
+  if (!accel_init())
+    indicators_set(IND_HW_ERR_ACCEL_INIT);
 
   eeprom_addr = flight_control_read_eeprom();
   
@@ -294,7 +295,7 @@ void loop()
   cycle_msec = (uint8_t)(current_msec - last_msec);
   
   if (cycle_msec > (uint8_t)(CONTROL_LOOP_CYCLE_SEC * 1000))
-    INDICATORS_SET(IND_SW_WARN);
+    indicators_set(IND_SW_WARN_LOOP_CYCLE);
 
   if (cycle_msec > max_cycle_msec)
     max_cycle_msec = cycle_msec;
@@ -351,9 +352,9 @@ void loop()
   {
     bat_status = new_bat_status;
     if (new_bat_status == BAT_LOW)
-      INDICATORS_SET(IND_BAT_LOW);
+      indicators_set(IND_BAT_LOW);
     else
-      INDICATORS_SET(IND_BAT_WARN);
+      indicators_set(IND_BAT_WARN);
   }
   
   // Read the accelerometers
@@ -449,7 +450,7 @@ void loop()
             
             // Advance to next sub-state
             
-            INDICATORS_SET(IND_SETUP_NEXT1);
+            indicators_set(IND_SETUP_NEXT1);
             setup_state = SETUP_RECEIVER_ROTATIONS;
             setup_cycles = 0;
 
@@ -471,7 +472,7 @@ void loop()
             // The gyros should have stabilized by now.  Issue an error
             // indication
             
-            INDICATORS_SET(IND_SETUP_ERR);
+            indicators_set(IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT);
             setup_state = SETUP_ERR;
             setup_cycles = 0;
           };
@@ -495,7 +496,7 @@ void loop()
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
   
-            INDICATORS_SET(IND_SETUP_NEXT2);
+            indicators_set(IND_SETUP_NEXT2);
             setup_state = SETUP_RECEIVER_THROTTLE_MAX;
             setup_cycles = 0;
   
@@ -517,7 +518,7 @@ void loop()
           if ((receiver_throttle.find_max()) &&
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
-            INDICATORS_SET(IND_SETUP_NEXT3);
+            indicators_set(IND_SETUP_NEXT3);
             setup_state = SETUP_RECEIVER_THROTTLE_MIN;
             setup_cycles = 0;
   
@@ -533,7 +534,7 @@ void loop()
           break;
   
         case SETUP_RECEIVER_THROTTLE_MIN:
-          // Wait until the the throttle stable at minimum.
+          // Wait until the throttle is stable at minimum.
   
           if ((receiver_throttle.find_min()) &&
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
@@ -542,7 +543,7 @@ void loop()
             
             receiver_throttle.calculate_throttle_motor_factor();
 
-            INDICATORS_SET(IND_ARMING);
+            indicators_set(IND_ARMING);
             setup_state = SETUP_ARMING;
             setup_cycles = 0;
           }
@@ -551,7 +552,7 @@ void loop()
           {
             // Too long time has passed, issue an error indication and start over
             
-            INDICATORS_SET(IND_SETUP_ERR);
+            indicators_set(IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT);
             setup_state = SETUP_ERR;
             setup_cycles = 0;
           }
@@ -570,7 +571,7 @@ void loop()
           else
           {
             flight_state = FLIGHT_READY;
-            INDICATORS_SET(IND_FLIGHT);
+            indicators_set(IND_FLIGHT);
             motors_enable();
           };
           
@@ -591,7 +592,7 @@ void loop()
           break;
 
         default:
-          INDICATORS_SET(IND_SW_ERR);
+          indicators_set(IND_SW_ERR);
           flight_state = FLIGHT_ERROR;
       }
     }
