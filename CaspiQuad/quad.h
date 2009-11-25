@@ -68,8 +68,8 @@
 #define PRINT_MOTOR_COMMAND       0
 #define PRINT_BAT_SENSOR          0
 #define PRINT_INDICATORS          0
-
-#define INDICATORS_DEBUG_TEXT     1
+#define PRINT_INDICATORS_TEXT     0
+#define PRINT_TELEMETRY           0
 
 
 //=============================================================================

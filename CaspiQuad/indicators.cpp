@@ -86,7 +86,8 @@ public:
   //============================= set() =======================================
   
   void
-  set(IndicatorStatus status);  // In:  Status to indicate
+  set(IndicatorStatus status_in,   // In:  Status to indicate
+      boolean         is_force);   // In:  Force update
 };
 
 
@@ -109,37 +110,46 @@ static const uint8_t setup_led_pattern[]       PROGMEM = {
                                                          };
 static const uint8_t setup_next1_led_pattern[] PROGMEM = {
                                                            PATTERN_ONCE,
-                                                           20, 1,
-                                                           20,
+                                                           15, 1,
+                                                           10,
                                                            PATTERN_END
                                                          };
 static const uint8_t setup_next2_led_pattern[] PROGMEM = {
                                                            PATTERN_ONCE,
-                                                           20, 1,
+                                                           15, 1,
                                                             1, 1,
-                                                           20,
+                                                           10,
                                                            PATTERN_END
                                                          };
 static const uint8_t setup_next3_led_pattern[] PROGMEM = {
                                                            PATTERN_ONCE,
-                                                           20, 1,
+                                                           15, 1,
                                                             1, 1,
                                                             1, 1,
-                                                           20,
+                                                           10,
                                                            PATTERN_END
                                                          };
 static const uint8_t setup_err_led_pattern[]   PROGMEM = {
                                                            PATTERN_ONCE,
-                                                           20, 1,
+                                                           15, 1,
                                                             1, 1,
                                                             1, 1,
                                                             1, 1,
                                                             1, 1,
-                                                           20,
+                                                           10,
                                                            PATTERN_END
                                                          };
 static const uint8_t arming_led_pattern[]      PROGMEM = {
-                                                           PATTERN_REPEAT,
+                                                           PATTERN_ONCE,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
                                                             1, 1,
                                                            PATTERN_END
                                                          };
@@ -166,11 +176,11 @@ static const uint8_t hw_err_led_pattern[]      PROGMEM = {
                                                          };
 static const uint8_t sw_warn_led_pattern[]     PROGMEM = {
                                                            PATTERN_ONCE,
-                                                           20, 2,
+                                                           15, 2,
                                                             2, 2,
                                                             2, 2,
                                                             2, 2,
-                                                           20,
+                                                           10,
                                                            PATTERN_END
                                                          };
 static const uint8_t sw_err_led_pattern[]      PROGMEM = {
@@ -179,21 +189,23 @@ static const uint8_t sw_err_led_pattern[]      PROGMEM = {
                                                            PATTERN_END
                                                          };
 
-static const prog_uint8_t *const p_led_patterns[] PROGMEM = {
-                                                              none_led_pattern,
-                                                              setup_led_pattern,
-                                                              setup_next1_led_pattern,
-                                                              setup_next2_led_pattern,
-                                                              setup_next3_led_pattern,
-                                                              setup_err_led_pattern,
-                                                              arming_led_pattern,
-                                                              flight_led_pattern,
-                                                              bat_warn_led_pattern,
-                                                              bat_low_led_pattern,
-                                                              hw_err_led_pattern,
-                                                              sw_warn_led_pattern,
-                                                              sw_err_led_pattern
-                                                            };
+static const prog_uint8_t *const p_led_patterns[] PROGMEM = 
+{
+  none_led_pattern,
+  setup_led_pattern,
+  setup_next1_led_pattern,
+  setup_next2_led_pattern,
+  setup_next3_led_pattern,
+  setup_err_led_pattern,   // IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT
+  setup_err_led_pattern,   // IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT
+  arming_led_pattern,
+  flight_led_pattern,
+  bat_warn_led_pattern,
+  bat_low_led_pattern,
+  hw_err_led_pattern,      // IND_HW_ERR_ACCEL_INIT
+  sw_warn_led_pattern,     // IND_SW_WARN_LOOP_CYCLE
+  sw_err_led_pattern
+};
 
 //-----------------
 // Buzzer Patterns
@@ -233,7 +245,16 @@ static const uint8_t setup_err_buz_pattern[]   PROGMEM = {
                                                            PATTERN_END
                                                          };
 static const uint8_t arming_buz_pattern[]      PROGMEM = {
-                                                           PATTERN_REPEAT,
+                                                           PATTERN_ONCE,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 1,
                                                             1, 1,
                                                            PATTERN_END
                                                          };
@@ -269,21 +290,23 @@ static const uint8_t sw_err_buz_pattern[]      PROGMEM = {
                                                            PATTERN_END
                                                          };
 
-static const prog_uint8_t *const p_buz_patterns[] PROGMEM = {
-                                                              none_buz_pattern,
-                                                              setup_buz_pattern,
-                                                              setup_next1_buz_pattern,
-                                                              setup_next2_buz_pattern,
-                                                              setup_next3_buz_pattern,
-                                                              setup_err_buz_pattern,
-                                                              arming_buz_pattern,
-                                                              flight_buz_pattern,
-                                                              bat_warn_buz_pattern,
-                                                              bat_low_buz_pattern,
-                                                              hw_err_buz_pattern,
-                                                              sw_warn_buz_pattern,
-                                                              sw_err_buz_pattern
-                                                            };
+static const prog_uint8_t *const p_buz_patterns[] PROGMEM =
+{
+  none_buz_pattern,
+  setup_buz_pattern,
+  setup_next1_buz_pattern,
+  setup_next2_buz_pattern,
+  setup_next3_buz_pattern,
+  setup_err_buz_pattern,   // IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT
+  setup_err_buz_pattern,   // IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT
+  arming_buz_pattern,
+  flight_buz_pattern,
+  bat_warn_buz_pattern,
+  bat_low_buz_pattern,
+  hw_err_buz_pattern,      // IND_HW_ERR_ACCEL_INIT
+  sw_warn_buz_pattern,     // IND_SW_WARN_LOOP_CYCLE
+  sw_err_buz_pattern
+};
 
 //-------------------
 // Indicator Objects
@@ -378,7 +401,7 @@ Indicator::update(void)   // In:  Status to indicate
 
           temp_status = IND_NONE;  // Even if we we're displaying temp
 
-          set(status);
+          set(status, true);
         }
 
         else
@@ -400,7 +423,8 @@ Indicator::update(void)   // In:  Status to indicate
 //================================= set() =====================================
 
 void
-Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
+Indicator::set(IndicatorStatus status_in,   // In:  Status to indicate
+               boolean         is_force)    // In:  Force update
 
 {
   const uint8_t *p_pattern;
@@ -411,8 +435,8 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
   p_pattern = (const uint8_t *)pgm_read_word(&p_patterns[status_in]);
   pattern_mode = pgm_read_byte(&p_pattern[0]);
 
-  if ((pgm_read_byte(&(p_patterns[status][0])) != PATTERN_PERMANENT)  ||
-      (pattern_mode                            == PATTERN_PERMANENT))
+  if (((uint8_t)pgm_read_byte(&(p_patterns[status][0])) != PATTERN_PERMANENT)  ||
+      (pattern_mode                                     == PATTERN_PERMANENT))
   {
     // Only a permanent pattern can update a permanent pattern
     
@@ -470,7 +494,7 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
         status = status_in;
       };
 
-      if (is_new)
+      if (is_new || is_force)
       {
         // Set the beginning of a new pattern (either temporary or not)
         // The actual pattern starts at entry #1
@@ -485,7 +509,7 @@ Indicator::set(IndicatorStatus status_in)   // In:  Status to indicate
 #if PRINT_INDICATORS
   Serial.print(pin, DEC);
   Serial.print("\t");
-  Serial.print(p_pattern[0], DEC);
+  Serial.print(pgm_read_byte(&p_pattern[0]), DEC);
   Serial.print("\t");
   Serial.print(status, DEC);
   Serial.print("\t");
@@ -543,8 +567,13 @@ void
 indicators_set(IndicatorStatus status)  // In:  Status to indicate
 
 {
-  led_indicator.set(status);
-  buz_indicator.set(status);
+#if PRINT_INDICATORS_TEXT
+  Serial.print("st: ");
+  Serial.println((int)status, DEC);
+#endif
+
+  led_indicator.set(status, false);
+  buz_indicator.set(status, false);
 
   // Make sure the first cycle takes a full INDICATOR_TICK_MSEC
   
