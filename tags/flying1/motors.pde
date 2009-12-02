@@ -107,7 +107,10 @@ motors_command(
 
 {
   uint8_t   dir;
-  int16_t   throttle_limit;
+  int16_t   rotation_rate_max;
+  int16_t   motor_corrections[NUM_DIRECTIONS];
+  int16_t   temp_motor_throttle;
+  boolean   is_overflow;
 
   
   if (! motors_enabled)
@@ -121,33 +124,32 @@ motors_command(
   else
   {
     // Limit the inputs to their legal values
+
+    // In idle mode, set the throttle input the idle value, so the props
+    // rotate at a low speed as a visual indication.
+
+    throttle = constrain(throttle,
+                         (int16_t)MOTOR_THROTTLE_IDLE,
+                         (int16_t)MOTOR_THROTTLE_TOP);
     
-    if (throttle < (int16_t)MOTOR_THROTTLE_IDLE)
-    {
-      // In idle mode, set the throttle input the idle value, and limit
-      // the motor command
+    // Find the available throttle range
+    
+    rotation_rate_max = throttle - (int16_t)MOTOR_THROTTLE_MIN;
+    if (rotation_rate_max > ((int16_t)MOTOR_THROTTLE_MAX - throttle))
+      rotation_rate_max = (int16_t)MOTOR_THROTTLE_MAX - throttle;
       
-      throttle = MOTOR_THROTTLE_IDLE;
-      throttle_limit = MOTOR_THROTTLE_IDLE + MOTOR_THROTTLE_IDLE_RANGE;
-    }
-
-    else
-    {
-      throttle_limit = (int16_t)MOTOR_THROTTLE_MAX;
-
-      if (throttle > (int16_t)MOTOR_THROTTLE_TOP)
-        throttle = MOTOR_THROTTLE_TOP;
-    };
+    // Limit roll & pitch to 75% of available throttle range
     
-    roll_rate  = constrain(roll_rate,
-                           (int16_t)MOTOR_ROTATION_RATE_MIN,
-                           (int16_t)MOTOR_ROTATION_RATE_MAX);
-    pitch_rate = constrain(pitch_rate,
-                           (int16_t)MOTOR_ROTATION_RATE_MIN,
-                           (int16_t)MOTOR_ROTATION_RATE_MAX);
-    yaw_rate   = constrain(yaw_rate,
-                           -throttle_limit / 2,
-                           throttle_limit / 2);
+    rotation_rate_max -= (rotation_rate_max >> 2);
+    
+    roll_rate  = constrain(roll_rate, -rotation_rate_max, rotation_rate_max);
+    pitch_rate = constrain(pitch_rate, -rotation_rate_max, rotation_rate_max);
+    
+    // Limit yaw to 37.5% of the available throttle range
+    
+    rotation_rate_max >>= 1;
+    
+    yaw_rate   = constrain(yaw_rate, -rotation_rate_max, rotation_rate_max);
       
     // Calculate Motor Commands:
     // ------------------------
@@ -172,24 +174,51 @@ motors_command(
     // done only after the summing of trottle and rotations.  This reduces the
     // roundoff errors.
 
-    throttle_limit >>= MOTOR_THROTTLE_FACTOR;
+    motor_corrections[FRONT] = - pitch_rate + yaw_rate;
+    motor_corrections[REAR ] = + pitch_rate + yaw_rate;
+    motor_corrections[RIGHT] = + roll_rate  - yaw_rate;
+    motor_corrections[LEFT ] = - roll_rate  - yaw_rate;
+
+    // Repeat the motor commands calculation until there's no overflow
     
-    motors_current_commands[FRONT] =
-      constrain((int16_t)(throttle - pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
-                (int16_t)MOTOR_COMMAND_MIN,
-                throttle_limit);
-    motors_current_commands[REAR ] =
-      constrain((int16_t)(throttle + pitch_rate + yaw_rate) >> MOTOR_THROTTLE_FACTOR,
-                (int16_t)MOTOR_COMMAND_MIN,
-                throttle_limit);
-    motors_current_commands[RIGHT] =
-      constrain((int16_t)(throttle + roll_rate  - yaw_rate) >> MOTOR_THROTTLE_FACTOR,
-                (int16_t)MOTOR_COMMAND_MIN,
-                throttle_limit);
-    motors_current_commands[LEFT ] =
-      constrain((int16_t)(throttle - roll_rate  - yaw_rate) >> MOTOR_THROTTLE_FACTOR,
-                (int16_t)MOTOR_COMMAND_MIN,
-                throttle_limit);
+    do
+    {
+      // Calculate the motor command for each motor, while checking for overflow
+      
+      is_overflow = false;
+      for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
+      {
+        temp_motor_throttle = throttle + motor_corrections[dir];
+        
+        if ((temp_motor_throttle > (int16_t)MOTOR_THROTTLE_MAX) ||
+            (temp_motor_throttle < (int16_t)MOTOR_THROTTLE_MIN))
+        {
+          // The command is to high or too low
+          
+          is_overflow = true;
+        }
+        
+        else
+        {
+          // Set the motor command for the current direction.
+          // Scale down to the motor command range.
+          
+          motors_current_commands[dir] =
+            (uint16_t)temp_motor_throttle >> MOTOR_THROTTLE_FACTOR;
+        }
+      }
+
+      if (is_overflow)
+      {
+        // There was an overflow in at least one of the motors.  Scale down all
+        // the corrections (to keep the quad balanced) and try again
+        
+        for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
+        {
+          motor_corrections[dir] >>= 1;
+        };
+      };
+    } while (is_overflow);
   };
 
   // Now send the commands to the motors
