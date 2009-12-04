@@ -1,7 +1,17 @@
 #summary Some videos of the CaspiQuad in action
 
+= Flights =
 
 <wiki:video url="http://www.youtube.com/watch?v=h3iEcCEg880"/>
 <wiki:video url="http://www.youtube.com/watch?v=SQUekTIQeDg"/>
 <wiki:video url="http://www.youtube.com/watch?v=LmzFKYqymqg"/>
 <wiki:video url="http://www.youtube.com/watch?v=GkX9iKVcm7M"/>
+
+= Glorious Crashes =
+
+<wiki:video url="http://www.youtube.com/watch?v=VT_OX7l3TsU"/>
+
+= Early Tests =
+
+<wiki:video url="http://www.youtube.com/watch?v=rRLUaJsUR3o"/>
+<wiki:video url="http://www.youtube.com/watch?v=sXf1H_Uab_o"/>
