@@ -42,7 +42,11 @@
 //
 //=============================================================================
 
-// None
+#define YAW_ESTIMATE_SHIFT 5  // ~ 0.3 sec of yaw integration HPF time constant
+
+#if (CONTROL_LOOP_CYCLE_MSEC != 10)
+  #error The above definition on YAW_ESTIMATE_SHIFT needs to be fixed
+#endif
 
 
 //========================= class RotationIntegrator ==========================
@@ -124,7 +128,105 @@ RotationIntegrator::estimate(
   return rotation_estimate;
 };
 
-                                
+
+//========================= class YawEstimator ================================
+//
+// This class implements a yaw angle estimator based on rotation rate
+// input, using an integrator, and control input based on user yaw stick
+// command 
+//
+//  rotation rate
+//  measure.                                      + +---+
+//  (rad/sec) ------------------------------------->|   |              rotation
+//                                                  |   |              estimate
+//  rotation                                        |   |   +--------+  (rad)
+//  control  --+------+                             | + |-->|integral|--+-->
+//  (boolean)  |      |/                            |   |   +--------+  |
+//             |      /      +-----+              - |   |       ^       |
+//             |  +--*   *-->| * K |--------------->|   |       |reset  |
+//             |  |          +-----+                +---+       |       |
+//             |  +---------------------------------------------|-------+
+//             |                                                |
+//             +------------------------------------------------+
+//
+//=============================================================================
+
+//============================== Constructor ==================================
+//
+// Initializes a YawEstimator object
+
+void
+YawEstimator::YawEstimator()
+
+{
+  reset();
+  was_user_command = false;
+};
+
+
+//============================== estimate() ===================================
+//
+// Estimate rotation angle for one rotation axis, based on rotation rate and
+// rotation angle measurements.
+
+int16_t                         // Ret: New rotation estimate
+YawEstimator::estimate(
+  float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
+                                //      scaled from gyro reading
+  boolean is_user_command)      // In:  Indicates if the user is commanding
+                                //      yaw (i.e., stick not at 0).
+
+{
+  if (is_user_command)
+  {
+    // The operator is controlling yaw, i.e., the stick is not in the center.
+    // Do high-pass filtering of the estimate: the integral decays towards zero
+    // fast enought so only short wind gusts are corrected.  In the long term,
+    // the integral should be near 0, so the zero rotation point is set by the
+    // operator
+    
+    rotation_estimate -= rotation_estimate >> YAW_ESTIMATE_SHIFT;
+  }
+
+  else if (was_user_command)
+  {
+    // For yaw, we don't have a real rotation angle measurement.  If the stick
+    // has just been returned to the center, assume the operator has just
+    // finished a yaw command, and set this point to be the zero rotation point.
+    // Else, just integrate the gyro measurement.
+    
+    reset();
+  }
+
+  // Save the command flag for the next time
+  
+  was_user_command = is_user_command;
+
+  // Now do the integral on the rotation rate
+  
+  rotation_estimate +=
+    (int16_t)((float)CONTROL_LOOP_CYCLE_SEC * (float)ROT_SCALE_RAD * rotation_rate_in);
+
+#if PRINT_ROT_ESTIMATE
+  Serial.print(rotation_rate_in);
+  Serial.print("\t");
+  Serial.print(is_user_command, BIN);
+  Serial.print("\t");
+  Serial.println(rotation_estimate, DEC);
+#endif
+
+  // Rotation estimate is cyclic, never above +/- PI (180 degrees)
+  // This happens natively if the scale is set to 2^15 per rad
+  // The following is a sanity check
+
+#if (ROT_SCALE_PI != (1u << 15))
+  #error ROT_SCALE_PI assumed to be 2^15
+#endif
+  
+  return rotation_estimate;
+}
+
+
 //========================= class RotationEstimator ===========================
 //
 // This class implements a rotation angle estimator using a complementary

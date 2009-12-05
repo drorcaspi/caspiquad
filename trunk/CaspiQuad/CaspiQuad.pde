@@ -72,7 +72,7 @@ static uint16_t    setup_cycles   = 0;
 
 Gyro               gyro[NUM_ROTATIONS];
 RotationEstimator  rot_estimator[2];
-RotationIntegrator yaw_estimator;
+YawEstimator       yaw_estimator;
 
 PID                rot_rate_pid[NUM_ROTATIONS];
 PID                rot_pid[NUM_ROTATIONS];
@@ -251,9 +251,7 @@ void loop()
   
   static BatStatus   bat_status                  = BAT_OK;
                           // Battery status
-  static boolean     is_receiver_yaw_command_near_zero = true;
-                          // Yaw stick is near the center
-
+ 
   // Local Variables
   
   uint8_t            current_msec;
@@ -624,36 +622,15 @@ void loop()
                                     rot_measurement[rot]);
     };
     
-    // For yaw, we don't have a real rotation angle measurement.  If the stick
-    // has just been returned to the center, assume the operator has just
-    // finished a yaw command, and set this point to be the zero rotation point.
-    // Else, just integrate the gyro measurement.
+    // For yaw, we don't have a real rotation angle measurement.  The estimator
+    // gets a paramter that tells it id the operator is currently controlling yaw,
+     // i.e., if the stick is not near the center.
     
-    rot_estimate[YAW] = yaw_estimator.estimate(gyro[YAW].get_rad_per_sec());
+    rot_estimate[YAW] = yaw_estimator.estimate(
+                          gyro[YAW].get_rad_per_sec(),
+                          ((receiver_rot_command[YAW] >= (int16_t) RECEIVER_YAW_ZERO_MAX) ||
+                           (receiver_rot_command[YAW] <= (int16_t)-RECEIVER_YAW_ZERO_MAX)));
     
-    if ((receiver_rot_command[YAW] <= (int16_t) RECEIVER_YAW_ZERO_MAX) &&
-        (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_ZERO_MAX))
-    {
-      // Yaw stick is currently near the center
-      
-      if (! is_receiver_yaw_command_near_zero)
-      {
-        // Yaw stick was not near the center last time
-        
-        yaw_estimator.reset();
-        rot_estimate[YAW] = 0;
-      }
-
-      is_receiver_yaw_command_near_zero = true;
-    }
-    
-    else
-    {
-      // Yaw stick is not near the center
-
-      is_receiver_yaw_command_near_zero = false;
-    };
-
 #if ESTIMATE_EARTH_ACCEL
     // Following is a test code that estimates earth-axis acceleration
     
