@@ -81,6 +81,56 @@ public:
 };
 
 
+//========================= class YawEstimator ================================
+//
+// This class implements a yaw angle estimator based on rotation rate
+// input, using an integrator, and control input based on user yaw stick
+// command 
+//
+//  rotation rate
+//  measure.                                      + +---+
+//  (rad/sec) ------------------------------------->|   |              rotation
+//                                                  |   |              estimate
+//  rotation                                        |   |   +--------+  (rad)
+//  control  --+------+                             | + |-->|integral|--+-->
+//  (boolean)  |      |/                            |   |   +--------+  |
+//             |      /      +-----+              - |   |       ^       |
+//             |  +--*   *-->| * K |--------------->|   |       |reset  |
+//             |  |          +-----+                +---+       |       |
+//             |  +---------------------------------------------|-------+
+//             |                                                |
+//             +------------------------------------------------+
+//
+//=============================================================================
+
+class YawEstimator: public RotationIntegrator
+
+{
+private:
+  boolean was_user_command;  // Stores is_user_command parameter to estimate()
+                             // from the last cycle
+                             
+public:
+  //============================== Constructor ==================================
+  //
+  // Initializes a RotationEstimator object
+  
+  YawEstimator(void);
+
+  //============================== estimate() ===================================
+  //
+  // Estimate rotation angle for one rotation axis, based on rotation rate and
+  // rotation angle measurements.
+
+  int16_t                         // Ret: New rotation estimate
+  estimate(
+    float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
+                                  //      scaled from gyro reading
+    boolean is_user_command);     // In:  Indicates if the user is commanding
+                                  //      yaw (i.e., stick not at 0).
+};
+
+
 //========================= class RotationEstimator ===========================
 //
 // This class implements a rotation angle estimator using a complementary
