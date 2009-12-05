@@ -31,7 +31,7 @@
 
 // Both buffers must be powers of 2, up to 128 bytes
 // Keep in mind the memory limits of the MCU!!
-#define USART_RX_BUFFER_SIZE   16
+#define USART_RX_BUFFER_SIZE   32
 #define USART_TX_BUFFER_SIZE   64
 
 // There were other ways of implementing the ring buffers that I thought of,
