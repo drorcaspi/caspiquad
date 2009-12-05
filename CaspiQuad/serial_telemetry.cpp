@@ -44,9 +44,21 @@
 //
 //=============================================================================
 
+// Maximum number of command parameters
+
+#define MAX_PARAMS                6
+
+// Maximum length of parameter string
+
+#define MAX_PARAM_STRING_LENGTH   8
+
+// Timeout after which a command line is considered complete
+
+#define COMMAND_TIMEOUT_MSEC    100
+
 // Cycle period for continuous queries
 
-#define CONT_QUERY_CYCLE_MSEC 100
+#define CONT_QUERY_CYCLE_MSEC    50
 
 // AeroQuad Configurator Definitions
 
@@ -66,42 +78,6 @@
 // Static Functions
 //
 //=============================================================================
-
-//=============================== parse_float() ===============================
-//
-// Parse a floating point value from the command string
-
-static
-float
-parse_float(char **pp_char)   // I/O: On input, pointer to first char
-                              //      On output, pointer to the first char of
-                              //      next parameter
-{
-  char *p_start;
-  char *p_end;
-
-
-  p_start = *pp_char;
-  p_end = p_start;
-
-  // Find the end of parameter
-  
-  while ((*p_end != '\0') && (*p_end != ';'))
-    p_end++;
-
-  if (*p_end != '\0')
-  {
-    // We're not at end of string.  Mark the end of paramter and advance the
-    // pointer to the next one.
-    
-    *p_end++ = '\0';
-  }
-  
-  *pp_char = p_end;
-  
-  return atof(p_start);
-}
-
 
 //=============================== print_semicolon() ===========================
 //
@@ -139,15 +115,18 @@ void
 handle_serial_telemetry(void)
 
 {
-  static char    query               = '\0'; // Command opcode
-  static char    command_line[64];           // Command line buffer
-  static uint8_t i_command_line      = 0;    // Index to the command line
-  static uint8_t query_cycle_counter = 0;    // Continuous commands cycle counter
-  static uint8_t cycle_counter;              // Status query cycle counter
-  
-  boolean        is_command;                 // Flags a command is available
-  char           new_char;                   // Character read from serial
-  char          *p_command_line;             // Pointer to the command line
+  static char    query                   = '\0'; // Command opcode
+  static float   params[MAX_PARAMS];
+  static uint8_t num_params              = 0;
+  static uint8_t expected_params         = 0;
+  static boolean is_continuous_query     = false;
+  static char    param_string[MAX_PARAM_STRING_LENGTH];
+                                                 // Command line buffer
+  static uint8_t i_param_string          = 0;    // Index to the command line
+  // static uint8_t query_cycle_counter     = 0;    // Continuous commands cycle counter
+  static uint8_t cycle_counter;                  // Status query cycle counter
+  static uint8_t command_timeout_counter = 0;    // Counts timeout for command completion
+  char           new_char;                       // Character read from serial
   uint8_t        rot;
   uint8_t        dir;
   uint8_t        axis;
@@ -156,49 +135,18 @@ handle_serial_telemetry(void)
   int8_t         accel_data[NUM_AXES];
   
 
-  // Read any available characters into the command line, until LF character
-  // or full buffer.
-
-  is_command = false;
-  while ((Serial.available() > 0) && (! is_command))
+  void command_reset(void)
   {
-#if PRINT_TELEMETRY
-    Serial.print(i_command_line, DEC);
-    Serial.print('\t');
-#endif
-    new_char = Serial.read();
-    command_line[i_command_line++] = new_char;
-#if PRINT_TELEMETRY
-    Serial.println((int)new_char, HEX);
-#endif
-    is_command = (i_command_line >= sizeof(command_line)) ||
-                 (new_char == '\r')                       ||
-                 (new_char == '\n');
-
-    // Whenever any character is read, previous outstanding commands are cancelled
-    
     query = '\0';
-    query_cycle_counter = 0;
-  };
-
-  if (is_command)
-  {
-    // A new command line has been received
-    
-    query = command_line[0];
-    p_command_line = &command_line[1];
-
-    // Put a null character at the end of the command, to make sure parameter
-    // parsing has an end mark.
-    
-    command_line[i_command_line - 1] = '\0';
-
-    // Reset the index to the beginning of buffer, to prepare for the next command
-    
-    i_command_line = 0;
+    expected_params = 0;
+    num_params = 0;
+    is_continuous_query = false;
+    i_param_string = 0;
   }
-
-  else if (query != '\0')
+  
+  
+#if 0
+  if ((query != '\0') && (num_params == expected_params))
   {
     // This is a contiuous query
     
@@ -207,346 +155,475 @@ handle_serial_telemetry(void)
       // It is time to re-issue the query
       
       query_cycle_counter = 0;
-      is_command = true;
-    };
+      is_cont_query = true;
+    }
   };
+#endif
 
-  if (is_command)
+  // TODO: need another indication of cont. query
+  while ((Serial.available() > 0) || is_continuous_query)
   {
-    // A command has been received, either a new one or a contnuous one
-    
-    switch (query)
+    if (Serial.available() > 0)
     {
-    case 'A':
-      // Receive roll and pitch rotation rate (gyro) PID setting
+      new_char = Serial.read();
+      
+      // Any character reset the command timeout
+      
+      command_timeout_counter = 0;
 
-      rot_rate_pid[ROLL].set_p(parse_float(&p_command_line));
-      rot_rate_pid[ROLL].set_i(parse_float(&p_command_line) / I_DISPLAY_FACTOR);
-      rot_rate_pid[ROLL].set_d(parse_float(&p_command_line));
-      rot_rate_pid[ROLL].reset();
-      
-      rot_rate_pid[PITCH].set_p(parse_float(&p_command_line));
-      rot_rate_pid[PITCH].set_i(parse_float(&p_command_line) / I_DISPLAY_FACTOR);
-      rot_rate_pid[PITCH].set_d(parse_float(&p_command_line));
-      rot_rate_pid[PITCH].reset();
-
-      query = '\0';
-      break;
-    
-    case 'C':
-      // Receive yaw rotation rate (gyro) PID settings
-      
-      rot_rate_pid[YAW].set_p(parse_float(&p_command_line));
-      rot_rate_pid[YAW].set_i(parse_float(&p_command_line) / I_DISPLAY_FACTOR);
-      rot_rate_pid[YAW].set_d(parse_float(&p_command_line));
-      rot_rate_pid[YAW].reset();
-
-      query = '\0';
-      break;
-    
-    case 'E':
-      // Receive roll and pitch rotation (auto level) PID settings
-      
-      rot_pid[ROLL].set_p(parse_float(&p_command_line));
-      rot_pid[ROLL].set_i(parse_float(&p_command_line));
-      rot_pid[ROLL].set_d(parse_float(&p_command_line));
-      rot_pid[ROLL].reset();
-      
-      rot_pid[PITCH].set_p(parse_float(&p_command_line));
-      rot_pid[PITCH].set_i(parse_float(&p_command_line));
-      rot_pid[PITCH].set_d(parse_float(&p_command_line));
-      rot_pid[PITCH].reset();
-
-      query = '\0';
-      break;
-   
-    case 'G':
-      // Receive auto level configuration values
-      
-      receiver_rot_gain = (uint8_t)parse_float(&p_command_line);  // levelLimit
-      
-      receiver_rot_limit = (uint16_t)parse_float(&p_command_line);  // levelOff
-
-      query = '\0';
-      break;
-     
-    case 'I':
-      // Receive flight control configuration values
-
-      // The configurator only supports a single windup guard
-    
-      windup_guard = parse_float(&p_command_line);
-      
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+      if (expected_params == 0)
       {
-        rot_rate_pid[rot].set_windup_guard(windup_guard);
-      };
-      
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        rot_pid[rot].set_windup_guard(windup_guard);
-      };
-      
-      receiver_rot_rate_gain = parse_float(&p_command_line) /
-                               RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR;  // xmitFactor
-
-      query = '\0';
-      break;
-    
-    case 'K':
-      // Receive data filtering values
-      
-      dummy = parse_float(&p_command_line);  // *** NOT IMPLEMENTED *** smoothFactor[GYRO]
-      dummy = parse_float(&p_command_line);  // *** NOT IMPLEMENTED *** smoothFactor[ACCEL]
-      
-      RotationEstimator::set_bw(parse_float(&p_command_line));
-
-      query = '\0';
-      break;
-    
-    case 'W':
-      // Write EEPROM
-
-      flight_control_write_eeprom();
-      Gyro::write_eeprom();
-      RotationEstimator::write_eeprom();
-
-      for (uint8_t rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        rot_rate_pid[rot].write_eeprom();
-        rot_pid[rot].write_eeprom();
-      };
-
-      eeprom_write_ver();
-
-      query = '\0';
-      break;
-
-    case 'B':
-      // Send roll and pitch rotation rate (gyro) PID settings
-
-      Serial.print(rot_rate_pid[ROLL].get_p());
-      print_comma();
-      Serial.print(rot_rate_pid[ROLL].get_i() * I_DISPLAY_FACTOR);
-      print_comma();
-      Serial.print(rot_rate_pid[ROLL].get_d());
-      print_comma();
-      Serial.print(rot_rate_pid[PITCH].get_p());
-      print_comma();
-      Serial.print(rot_rate_pid[PITCH].get_i() * I_DISPLAY_FACTOR);
-      print_comma();
-      Serial.println(rot_rate_pid[PITCH].get_d());
-
-      query = '\0';
-      break;
-
-    case 'D':
-      // Send yaw rotation rate (gyro) PID settings
-      
-      Serial.print(rot_rate_pid[YAW].get_p());
-      print_comma();
-      Serial.print(rot_rate_pid[YAW].get_i() * I_DISPLAY_FACTOR);
-      print_comma();
-      Serial.println(rot_rate_pid[YAW].get_d());  
-
-      query = '\0';
-      break;
-      
-    case 'F':
-      // Send roll and pitch rotation (auto level) PID settings
-      
-      Serial.print(rot_pid[ROLL].get_p());
-      print_comma();
-      Serial.print(rot_pid[ROLL].get_i());
-      print_comma();
-      Serial.print(rot_pid[ROLL].get_d());
-      print_comma();
-      Serial.print(rot_pid[PITCH].get_p());
-      print_comma();
-      Serial.print(rot_pid[PITCH].get_i());
-      print_comma();
-      Serial.println(rot_pid[PITCH].get_d());
-
-      query = '\0';
-      break;
-      
-    case 'H':
-      // Send auto level configuration values
-      
-      Serial.print(receiver_rot_gain, DEC);  // levelLimit
-      
-      print_comma();
-      Serial.println(receiver_rot_limit);  // levelOff
-
-      query = '\0';
-      break;
-      
-    case 'J':
-      // Send flight control configuration values
-
-      // The configurator only supports a single windup guard value
-      
-      Serial.print(rot_rate_pid[ROLL].get_windup_guard());
-      
-      print_comma();
-      Serial.println(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
-
-      query = '\0';
-      break;
-      
-    case 'L':
-      // Send data filtering values
-      
-      Serial.print(1.0 /* *** NOT IMPLEMENTED *** smoothFactor[GYRO] */);
-      print_comma();
-      
-      Serial.print(1.0 /* *** NOT IMPLEMENTED *** smoothFactor[ACCEL] */);
-      print_comma();
-      
-      Serial.println(RotationEstimator::get_bw());
-
-      query = '\0';
-      break;
-      
-    case 'Q':
-    // Send sensor data
-    
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        Serial.print((int)(gyro[rot].get_rad_per_sec() * DEG_IN_RAD));
-        print_comma();
-      };
-
-      accel_get_current(accel_data);
-      for (axis = FIRST_AXIS; axis < NUM_AXES; axis++)
-      {
-        Serial.print(accel_data[axis]);  // Not sure about the order
-        print_comma();
-      };
-
-      Serial.print(0, DEC);   // levelAdjust - not used
-      print_comma();
-      Serial.print(0, DEC);   // levelAdjust -not used
-      print_comma();
-
-      Serial.print(rot_estimator[ROLL].get_estimate() * DEG_IN_RAD);
-      print_comma();
-      Serial.println(rot_estimator[PITCH].get_estimate() * DEG_IN_RAD);
-
-      break;
-      
-    case 'R':
-      // Send raw sensor data
-
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        Serial.print((int16_t)(gyro[rot].get_raw() - gyro[rot].get_raw_zero()));
-        print_comma();
-      };
-
-      accel_get_current(accel_data);
-
-      Serial.print(accel_data[Y_AXIS], DEC);  // Not sure about the order
-      print_comma();
-      Serial.print(accel_data[X_AXIS], DEC);  // Not sure about the order
-      print_comma();
-      Serial.println(accel_data[Z_AXIS], DEC);  // Not sure about the order
-    
-      break;
-      
-    case 'S':
-      // Send all flight data
-
-      if ((cycle_counter++ & 0x20) != 0)    
-        Serial.print((int)(max_cycle_msec));
-      else
-        Serial.print((int)(avg_cycle_msec >> 8));
-      
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        print_comma();
-        Serial.print((int)(gyro[rot].get_rad_per_sec() * DEG_IN_RAD));
+        // This is the first character of a new command
+        
+        command_reset();
+        query = new_char;
       }
-      
-      print_comma();    
-      Serial.print(motor_throttle_command);
-      
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        print_comma();
-        Serial.print(motor_rot_command[rot], DEC);
-      };
 
-      // Print motor commands (pulse width in usec)
-      
-      for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
+      else
       {
-        print_comma();
-        Serial.print(motors_get_current_pw_usec(dir), DEC);
-      };
-      
-      print_comma();
+        // This is a character that belong to a parameter
+        
+        if (new_char == ';')
+        {
+          // ';' marks the end of parameter
+          
+          param_string[i_param_string] = '\0';
+          i_param_string = 0;
+          params[num_params++] = atof(param_string);
+        }
 
-      Serial.print(flight_state == FLIGHT_READY ? 1 : 0, BIN);  // Armed
-      print_comma();
+        else if (((new_char >= '0') && (new_char <= '9')) ||
+                 (new_char == '-') ||
+                 (new_char == '+') ||
+                 (new_char == '.'))
+        {
+          // Append the new character to the parameter string
+          
+          param_string[i_param_string++] = new_char;
+
+          if (i_param_string >= sizeof(param_string))
+          {
+            // Parameter buffer overflow, abort
+
+            command_reset();
+          }
+        }
+
+        else
+        {
+          // Unexpected character. Abort, starting a new command
+
+          command_reset();
+          query = new_char;
+        }
+      }
+    };
+
+    if ((query != '\0') && (num_params == expected_params))
+    {
+      // A command has been received:
+      // - Either this is the first char of a new command
+      // - Or a complete command with all its paramters
       
-      Serial.println(receiver_get_boolean(GEAR_CH)  ? 1 : 0, BIN);   // Mode
+      if (expected_params == 0)
+      {
+        // Set the number of expected params per the query
+        
+        switch (query)
+          case 'A':
+          case 'E':
+            expected_params = 6;
+            break;
+
+          case 'C':
+          case 'K':
+            expected_params = 3;
+            break;
+
+          case 'G':
+          case 'I':
+            expected_params = 2;
+            break;
+
+          default:
+            expected_params = 0;
+            break;
+      }
+
+      if (num_params >= expected_params)
+      {
+        // The command is ready for processing
+        
+        switch (query)
+        {
+        case 'A':
+          // Receive roll and pitch rotation rate (gyro) PID setting
+
+          rot_rate_pid[ROLL].set_p(params[0]);
+          rot_rate_pid[ROLL].set_i(params[1] / I_DISPLAY_FACTOR);
+          rot_rate_pid[ROLL].set_d(params[2]);
+          rot_rate_pid[ROLL].reset();
+          
+          rot_rate_pid[PITCH].set_p(params[3]);
+          rot_rate_pid[PITCH].set_i(params[4] / I_DISPLAY_FACTOR);
+          rot_rate_pid[PITCH].set_d(params[5]);
+          rot_rate_pid[PITCH].reset();
+
+          command_reset();
+          
+          break;
+        
+        case 'C':
+          // Receive yaw rotation rate (gyro) PID settings
+          
+          rot_rate_pid[YAW].set_p(params[0]);
+          rot_rate_pid[YAW].set_i(params[1] / I_DISPLAY_FACTOR);
+          rot_rate_pid[YAW].set_d(params[2]);
+          rot_rate_pid[YAW].reset();
+
+          command_reset();
+          
+          break;
+        
+        case 'E':
+          // Receive roll and pitch rotation (auto level) PID settings
+          
+          rot_pid[ROLL].set_p(params[0]);
+          rot_pid[ROLL].set_i(params[1]);
+          rot_pid[ROLL].set_d(params[2]);
+          rot_pid[ROLL].reset();
+          
+          rot_pid[PITCH].set_p(params[3]);
+          rot_pid[PITCH].set_i(params[4]);
+          rot_pid[PITCH].set_d(params[5]);
+          rot_pid[PITCH].reset();
+
+          command_reset();
+          
+          break;
+       
+        case 'G':
+          // Receive auto level configuration values
+          
+          receiver_rot_gain = (uint8_t)params[0];  // levelLimit
+          
+          receiver_rot_limit = (uint16_t)params[1];  // levelOff
+
+          command_reset();
+          
+          break;
+         
+        case 'I':
+          // Receive flight control configuration values
+
+          // The configurator only supports a single windup guard
+        
+          windup_guard = params[0];
+          
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            rot_rate_pid[rot].set_windup_guard(windup_guard);
+          };
+          
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            rot_pid[rot].set_windup_guard(windup_guard);
+          };
+          
+          receiver_rot_rate_gain = params[1] /
+                                   RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR;  // xmitFactor
+
+          command_reset();
+          
+          break;
+        
+        case 'K':
+          // Receive data filtering values
+          
+          dummy = params[0];  // *** NOT IMPLEMENTED *** smoothFactor[GYRO]
+          dummy = params[1];  // *** NOT IMPLEMENTED *** smoothFactor[ACCEL]
+          
+          RotationEstimator::set_bw(params[2]);
+
+          command_reset();
+          
+          break;
+        
+        case 'W':
+          // Write EEPROM
+
+          flight_control_write_eeprom();
+          Gyro::write_eeprom();
+          RotationEstimator::write_eeprom();
+
+          for (uint8_t rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            rot_rate_pid[rot].write_eeprom();
+            rot_pid[rot].write_eeprom();
+          };
+
+          eeprom_write_ver();
+
+          command_reset();
+          
+          break;
+
+        case 'B':
+          // Send roll and pitch rotation rate (gyro) PID settings
+
+          Serial.print(rot_rate_pid[ROLL].get_p());
+          print_comma();
+          Serial.print(rot_rate_pid[ROLL].get_i() * I_DISPLAY_FACTOR);
+          print_comma();
+          Serial.print(rot_rate_pid[ROLL].get_d());
+          print_comma();
+          Serial.print(rot_rate_pid[PITCH].get_p());
+          print_comma();
+          Serial.print(rot_rate_pid[PITCH].get_i() * I_DISPLAY_FACTOR);
+          print_comma();
+          Serial.println(rot_rate_pid[PITCH].get_d());
+
+          command_reset();
+          
+          break;
+
+        case 'D':
+          // Send yaw rotation rate (gyro) PID settings
+          
+          Serial.print(rot_rate_pid[YAW].get_p());
+          print_comma();
+          Serial.print(rot_rate_pid[YAW].get_i() * I_DISPLAY_FACTOR);
+          print_comma();
+          Serial.println(rot_rate_pid[YAW].get_d());  
+
+          command_reset();
+          
+          break;
+          
+        case 'F':
+          // Send roll and pitch rotation (auto level) PID settings
+          
+          Serial.print(rot_pid[ROLL].get_p());
+          print_comma();
+          Serial.print(rot_pid[ROLL].get_i());
+          print_comma();
+          Serial.print(rot_pid[ROLL].get_d());
+          print_comma();
+          Serial.print(rot_pid[PITCH].get_p());
+          print_comma();
+          Serial.print(rot_pid[PITCH].get_i());
+          print_comma();
+          Serial.println(rot_pid[PITCH].get_d());
+
+          command_reset();
+          
+          break;
+          
+        case 'H':
+          // Send auto level configuration values
+          
+          Serial.print(receiver_rot_gain, DEC);  // levelLimit
+          
+          print_comma();
+          Serial.println(receiver_rot_limit);  // levelOff
+
+          command_reset();
+          
+          break;
+          
+        case 'J':
+          // Send flight control configuration values
+
+          // The configurator only supports a single windup guard value
+          
+          Serial.print(rot_rate_pid[ROLL].get_windup_guard());
+          
+          print_comma();
+          Serial.println(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
+
+          command_reset();
+          
+          break;
+          
+        case 'L':
+          // Send data filtering values
+          
+          Serial.print(9.99 /* *** NOT IMPLEMENTED *** smoothFactor[GYRO] */);
+          print_comma();
+          
+          Serial.print(9.99 /* *** NOT IMPLEMENTED *** smoothFactor[ACCEL] */);
+          print_comma();
+          
+          Serial.println(RotationEstimator::get_bw());
+
+          command_reset();
+          
+          break;
+          
+        case 'Q':
+        // Send sensor data
+        
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            Serial.print((int)(gyro[rot].get_rad_per_sec() * DEG_IN_RAD));
+            print_comma();
+          };
+
+          accel_get_current(accel_data);
+          for (axis = FIRST_AXIS; axis < NUM_AXES; axis++)
+          {
+            Serial.print(accel_data[axis]);  // Not sure about the order
+            print_comma();
+          };
+
+          Serial.print(0, DEC);   // levelAdjust - not used
+          print_comma();
+          Serial.print(0, DEC);   // levelAdjust -not used
+          print_comma();
+
+          Serial.print(rot_estimator[ROLL].get_estimate() * DEG_IN_RAD);
+          print_comma();
+          Serial.println(rot_estimator[PITCH].get_estimate() * DEG_IN_RAD);
+
+          // This is a continuous query
+          
+          break;
+          
+        case 'R':
+          // Send raw sensor data
+
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            Serial.print((int16_t)(gyro[rot].get_raw() - gyro[rot].get_raw_zero()));
+            print_comma();
+          };
+
+          accel_get_current(accel_data);
+
+          Serial.print(accel_data[Y_AXIS], DEC);  // Not sure about the order
+          print_comma();
+          Serial.print(accel_data[X_AXIS], DEC);  // Not sure about the order
+          print_comma();
+          Serial.println(accel_data[Z_AXIS], DEC);  // Not sure about the order
+        
+          // This is a continuous query
+        
+          break;
+          
+        case 'S':
+          // Send all flight data
+
+          if ((cycle_counter++ & 0x20) != 0)    
+            Serial.print((int)(max_cycle_msec));
+          else
+            Serial.print((int)(avg_cycle_msec >> 8));
+          
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            print_comma();
+            Serial.print((int)(gyro[rot].get_rad_per_sec() * DEG_IN_RAD));
+          }
+          
+          print_comma();    
+          Serial.print(motor_throttle_command);
+          
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            print_comma();
+            Serial.print(motor_rot_command[rot], DEC);
+          };
+
+          // Print motor commands (pulse width in usec)
+          
+          for (dir = FIRST_DIRECTION; dir < NUM_DIRECTIONS; dir++)
+          {
+            print_comma();
+            Serial.print(motors_get_current_pw_usec(dir), DEC);
+          };
+          
+          print_comma();
+
+          Serial.print(flight_state == FLIGHT_READY ? 1 : 0, BIN);  // Armed
+          print_comma();
+          
+          Serial.println(receiver_get_boolean(GEAR_CH)  ? 1 : 0, BIN);   // Mode
+        
+          // This is a continuous query
+        
+          break;
+          
+        case 'T':
+          // Send processed transmitter values
+          
+          Serial.print(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
+          print_comma();
+
+          Serial.print(0 /* transmitterCommand[ROLL] */);
+          print_comma();
+          Serial.print(0 /* transmitterCommand[PITCH] */);
+          print_comma();
+          Serial.print(0 /* transmitterCommand[YAW] */);
+
+          print_comma();
+          Serial.print(0, DEC);   // levelAdjust - not supported
+          print_comma();
+          Serial.print(0, DEC);   // levelAdjust - not supported
+
+          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
+          {
+            print_comma();
+            Serial.print(motor_rot_command[rot], DEC);
+          };
+
+          // This is a continuous query
+          
+          Serial.println();
+
+          break;
+           
+        case 'U':
+          // Send receiver values
+          
+          Serial.print(receiver_get_current_raw(ROLL_CH));
+          print_comma();
+          Serial.print(receiver_get_current_raw(PITCH_CH));
+          print_comma();
+          Serial.print(receiver_get_current_raw(YAW_CH));
+          print_comma();
+          Serial.print(receiver_get_current_raw(THROTTLE_CH));
+          print_comma();
+          Serial.print(receiver_get_current_raw(GEAR_CH));
+          print_comma();
+          Serial.println(receiver_get_current_raw(AUX1_CH));
+
+          // This is a continuous query
+          
+          break;
+           
+        case 'X':
+          // Stop continuous commands
+          
+          command_reset();
+          
+          break;
+           
+        default:
+          command_reset();
+          
+          break;
+        }
+      }
+    }
+
+    // Check for command timeout
     
-      break;
-      
-    case 'T':
-      // Send processed transmitter values
-      
-      Serial.print(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
-      print_comma();
+    if ((expected_params > 0) &&
+        (++command_timeout_counter >=
+                      (uint8_t)(COMMAND_TIMEOUT_MSEC / CONTROL_LOOP_CYCLE_MSEC)))
+    {
+      // Abort
 
-      Serial.print(0 /* transmitterCommand[ROLL] */);
-      print_comma();
-      Serial.print(0 /* transmitterCommand[PITCH] */);
-      print_comma();
-      Serial.print(0 /* transmitterCommand[YAW] */);
-
-      print_comma();
-      Serial.print(0, DEC);   // levelAdjust - not supported
-      print_comma();
-      Serial.print(0, DEC);   // levelAdjust - not supported
-
-      for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-      {
-        print_comma();
-        Serial.print(motor_rot_command[rot], DEC);
-      };
-
-      Serial.println();
-
-      break;
-       
-    case 'U':
-      // Send receiver values
-      
-      Serial.print(receiver_get_current_raw(ROLL_CH));
-      print_comma();
-      Serial.print(receiver_get_current_raw(PITCH_CH));
-      print_comma();
-      Serial.print(receiver_get_current_raw(YAW_CH));
-      print_comma();
-      Serial.print(receiver_get_current_raw(THROTTLE_CH));
-      print_comma();
-      Serial.print(receiver_get_current_raw(GEAR_CH));
-      print_comma();
-      Serial.println(receiver_get_current_raw(AUX1_CH));
-      
-      break;
-       
-    case 'X':
-      // Stop continuous commands
-      
-      query = '\0';
-      break;
-       
-    default:
-      query = '\0';
-      break;
+      command_reset();
     }
   }
 }
