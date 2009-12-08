@@ -60,7 +60,7 @@ extern uint8_t            max_cycle_msec;
 
 extern Gyro               gyro[NUM_ROTATIONS];
 extern RotationEstimator  rot_estimator[2];
-extern RotationIntegrator yaw_estimator;
+extern YawEstimator       yaw_estimator;
 
 extern PID                rot_rate_pid[NUM_ROTATIONS];
 extern PID                rot_pid[NUM_ROTATIONS];
