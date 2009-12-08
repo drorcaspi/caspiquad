@@ -155,7 +155,6 @@ RotationIntegrator::estimate(
 //
 // Initializes a YawEstimator object
 
-void
 YawEstimator::YawEstimator()
 
 {
