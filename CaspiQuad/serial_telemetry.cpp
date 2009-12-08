@@ -68,9 +68,23 @@
 
 #define I_DISPLAY_FACTOR                      1000
 
-#define MOTOR_COMMAND_DISPLAY_MIN             1000
-#define MOTOR_COMMAND_DISPLAY_MAX             2000
-#define MOTOR_COMMAND_DISPLAY_RANGE           (MOTOR_COMMAND_DISPLAY_MAX - MOTOR_COMMAND_DISPLAY_MIN)
+
+//=============================================================================
+//
+// Static Variables
+//
+//=============================================================================
+
+static char    query                   = '\0'; // Command opcode
+static float   params[MAX_PARAMS];
+static uint8_t num_params              = 0;
+static uint8_t expected_params         = 0;
+static char    param_string[MAX_PARAM_STRING_LENGTH];
+                                               // Command line buffer
+static uint8_t i_param_string          = 0;    // Index to the command line
+static uint8_t query_cycle_counter     = 0;    // Continuous commands cycle counter
+static uint8_t cycle_counter;                  // Status query cycle counter
+static uint8_t command_timeout_counter = 0;    // Counts timeout for command completion
 
 
 //=============================================================================
@@ -101,6 +115,20 @@ static void print_comma()
 }
 
 
+//============================= command_reset() ===============================
+//
+// Reset the command buffer and associated variables
+
+void command_reset(void)
+{
+  query = '\0';
+  expected_params = 0;
+  num_params = 0;
+  i_param_string = 0;
+  command_timeout_counter = 0;
+}
+
+
 //=============================================================================
 //
 // Public Functions
@@ -115,18 +143,8 @@ void
 handle_serial_telemetry(void)
 
 {
-  static char    query                   = '\0'; // Command opcode
-  static float   params[MAX_PARAMS];
-  static uint8_t num_params              = 0;
-  static uint8_t expected_params         = 0;
-  static boolean is_continuous_query     = false;
-  static char    param_string[MAX_PARAM_STRING_LENGTH];
-                                                 // Command line buffer
-  static uint8_t i_param_string          = 0;    // Index to the command line
-  // static uint8_t query_cycle_counter     = 0;    // Continuous commands cycle counter
-  static uint8_t cycle_counter;                  // Status query cycle counter
-  static uint8_t command_timeout_counter = 0;    // Counts timeout for command completion
   char           new_char;                       // Character read from serial
+  boolean        is_continuous_query;
   uint8_t        rot;
   uint8_t        dir;
   uint8_t        axis;
@@ -134,36 +152,30 @@ handle_serial_telemetry(void)
   float          windup_guard;
   int8_t         accel_data[NUM_AXES];
   
-
-  void command_reset(void)
-  {
-    query = '\0';
-    expected_params = 0;
-    num_params = 0;
-    is_continuous_query = false;
-    i_param_string = 0;
-  }
   
-  
-#if 0
+  is_continuous_query = false;
   if ((query != '\0') && (num_params == expected_params))
   {
-    // This is a contiuous query
+    // This is a contiuous query, process every CONT_QUERY_CYCLE_MSEC
     
-    if (++query_cycle_counter >= (uint8_t)(CONT_QUERY_CYCLE_MSEC / CONTROL_LOOP_CYCLE_MSEC))
+    if (++query_cycle_counter >=
+                     (uint8_t)(CONT_QUERY_CYCLE_MSEC / CONTROL_LOOP_CYCLE_MSEC))
     {
       // It is time to re-issue the query
       
       query_cycle_counter = 0;
-      is_cont_query = true;
+      is_continuous_query = true;
     }
   };
-#endif
 
-  // TODO: need another indication of cont. query
-  while ((Serial.available() > 0) || is_continuous_query)
+  // Repeat while there is serial input, and at least one time if there's
+  // an ongoing continuous query
+  
+  while (Serial.is_available() || is_continuous_query)
   {
-    if (Serial.available() > 0)
+    is_continuous_query = false;  // Only do this loop once for continuos query
+    
+    if (Serial.is_available)
     {
       new_char = Serial.read();
       
@@ -230,6 +242,7 @@ handle_serial_telemetry(void)
         // Set the number of expected params per the query
         
         switch (query)
+        {
           case 'A':
           case 'E':
             expected_params = 6;
@@ -248,6 +261,7 @@ handle_serial_telemetry(void)
           default:
             expected_params = 0;
             break;
+        }
       }
 
       if (num_params >= expected_params)
@@ -448,10 +462,10 @@ handle_serial_telemetry(void)
         case 'L':
           // Send data filtering values
           
-          Serial.print(9.99 /* *** NOT IMPLEMENTED *** smoothFactor[GYRO] */);
+          Serial.print(9.99); // *** NOT IMPLEMENTED *** smoothFactor[GYRO]
           print_comma();
           
-          Serial.print(9.99 /* *** NOT IMPLEMENTED *** smoothFactor[ACCEL] */);
+          Serial.print(9.99); // *** NOT IMPLEMENTED *** smoothFactor[ACCEL]
           print_comma();
           
           Serial.println(RotationEstimator::get_bw());
@@ -546,7 +560,7 @@ handle_serial_telemetry(void)
           Serial.print(flight_state == FLIGHT_READY ? 1 : 0, BIN);  // Armed
           print_comma();
           
-          Serial.println(receiver_get_boolean(GEAR_CH)  ? 1 : 0, BIN);   // Mode
+          Serial.println(receiver_get_boolean(GEAR_CH) ? 1 : 0, BIN);   // Mode
         
           // This is a continuous query
         
@@ -558,11 +572,11 @@ handle_serial_telemetry(void)
           Serial.print(receiver_rot_rate_gain * RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR);  // xmitFactor
           print_comma();
 
-          Serial.print(0 /* transmitterCommand[ROLL] */);
+          Serial.print(0); // transmitterCommand[ROLL] - not supported
           print_comma();
-          Serial.print(0 /* transmitterCommand[PITCH] */);
+          Serial.print(0); // transmitterCommand[PITCH] - not supported
           print_comma();
-          Serial.print(0 /* transmitterCommand[YAW] */);
+          Serial.print(0); // transmitterCommand[YAW] - not supported
 
           print_comma();
           Serial.print(0, DEC);   // levelAdjust - not supported

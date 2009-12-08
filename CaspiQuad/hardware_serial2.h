@@ -31,32 +31,26 @@
 
 // Both buffers must be powers of 2, up to 128 bytes
 // Keep in mind the memory limits of the MCU!!
-#define USART_RX_BUFFER_SIZE   32
+
+#define USART_RX_BUFFER_SIZE   64
 #define USART_TX_BUFFER_SIZE   64
 
-// There were other ways of implementing the ring buffers that I thought of,
-// that avoid defining 2 separate struct's for the same thing:
-//
-//  * allocating memory for the buffers using malloc() at runtime
-//      not sure how 'dynamic' memory management will work on the micro
-//  * using separate variables, not packing the buffers into structs
-//      structs are much neater
-//  * defining a single macro for buffer size
-//      both buffers would need to have the same size
-struct rx_ring_buffer {
-    uint8_t buffer[USART_RX_BUFFER_SIZE];
-    volatile uint8_t head;
-    volatile uint8_t tail;
+struct rx_ring_buffer
+{
+  uint8_t          buffer[USART_RX_BUFFER_SIZE];
+  volatile uint8_t head;
+  volatile uint8_t tail;
 };
 
-struct tx_ring_buffer {
-    uint8_t buffer[USART_TX_BUFFER_SIZE];
-    volatile uint8_t head;
-    volatile uint8_t tail;
+struct tx_ring_buffer
+{
+  uint8_t          buffer[USART_TX_BUFFER_SIZE];
+  volatile uint8_t head;
+  volatile uint8_t tail;
 };
 
 
-class HardwareSerial2 : public Print
+class HardwareSerial2: public Print
 {
   private:
     rx_ring_buffer *_rx_buffer;
@@ -68,13 +62,11 @@ class HardwareSerial2 : public Print
     void write(uint8_t);
     void flush(void);
     uint8_t available(void);
+    boolean is_available(void) {return (_rx_buffer->head != _rx_buffer->tail)};
     uint8_t read(void);
-
 };
 
 extern HardwareSerial2 Serial;
 
 #endif
- 
-
 
