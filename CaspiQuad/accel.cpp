@@ -89,7 +89,21 @@
 //
 //=============================================================================
 
+// Current accelerometer readings (raw)
+
 static int8_t current_accel_data[NUM_AXES];
+
+#if SUPPORT_ACCEL_CALIBRATION
+// Accelerometer readings on a flat surface.  Should be calibrated to acheive
+// best results.
+
+static int8_t flat_accel_data[NUM_AXES] = {0, 0, ACCEL_TYP_1G};
+
+// Long-time avergae of accelerometer readings.  Scale is shift left from
+// raw readings by ACCEL_LONG_AVG_SHIFT
+
+static int16_t accel_long_avg[NUM_AXES];
+#endif
 
 
 //=============================== accel_init() ================================
@@ -200,6 +214,9 @@ accel_get_rotations(
 
   rot_rad[ROLL]  = (int16_t)ROT_NONE;
   rot_rad[PITCH] = (int16_t)ROT_NONE;
+
+  // Use the Z axis accelerometer reading as-is, do not subtract flat-surface
+  // reading since we use earth gravity here
   
   atan_row = current_accel_data[Z_AXIS];
 
@@ -209,8 +226,12 @@ accel_get_rotations(
     atan_row -= (int8_t)ATAN_ROW_MIN;
     
     // Find roll angle based on atan2(Z, Y)
+    // Correct the Y accelerometer reading based on flat surface reading.
 
     atan_col = current_accel_data[Y_AXIS];
+#if SUPPORT_ACCEL_CALIBRATION
+    atan_col -= flat_accel_data[Y_AXIS];
+#endif
     
     // Get the atan value from the table.  Note that the table resides in
     // program memory, therefore we must use pgm_read_word() to access it.
@@ -230,8 +251,12 @@ accel_get_rotations(
     };
     
     // Find pitch angle based on atan2(Z, X)
+    // Correct the X accelerometer reading based on flat surface reading.
     
     atan_col = current_accel_data[X_AXIS];
+#if SUPPORT_ACCEL_CALIBRATION
+    atan_col -= flat_accel_data[X_AXIS];
+#endif
     
     if (atan_col >= 0)
     {

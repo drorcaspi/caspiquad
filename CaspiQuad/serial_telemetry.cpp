@@ -175,7 +175,7 @@ handle_serial_telemetry(void)
   {
     is_continuous_query = false;  // Only do this loop once for continuos query
     
-    if (Serial.is_available)
+    if (Serial.is_available())
     {
       new_char = Serial.read();
       
