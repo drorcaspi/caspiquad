@@ -20,10 +20,8 @@
 
 // Published in http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1242466935
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include "quad.h"
 
-#include "hardware_serial2.h"
 
 //=============================================================================
 //

@@ -44,13 +44,17 @@ typedef enum
   IND_SETUP_NEXT3                     =  4, // Prompt to do next step of setup
   IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT =  5, // Some error in setup, e.g., gyros not stable
   IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT  =  6, // Timeout waiting for throttle @ min
-  IND_ARMING                          =  7, // Warning - arming motors
-  IND_FLIGHT                          =  8, // Everything ready & armed, motors running
-  IND_BAT_WARN                        =  9, // Battery warning
-  IND_BAT_LOW                         = 10, // Battery empty
-  IND_HW_ERR_ACCEL_INIT               = 11, // Hardware error: can't read accelerometers 
-  IND_SW_WARN_LOOP_CYCLE              = 12, // Software warning: didn't complete main cycle on time
-  IND_SW_ERR                          = 13  // Software error
+  IND_SETUP_ROLL_CENTER               =  7, // Setting the roll trim
+  IND_SETUP_PITCH_CENTER              =  8, // Setting the pitch trim
+  IND_ROT_POSITIVE                    =  9, // Indicate rotation stick > 0
+  IND_ROT_NEGATIVE                    = 10, // Indicate rotation stick < 0
+  IND_ARMING                          = 11, // Warning - arming motors
+  IND_FLIGHT                          = 12, // Everything ready & armed, motors running
+  IND_BAT_WARN                        = 13, // Battery warning
+  IND_BAT_LOW                         = 14, // Battery empty
+  IND_HW_ERR_ACCEL_INIT               = 15, // Hardware error: can't read accelerometers 
+  IND_SW_WARN_LOOP_CYCLE              = 16, // Software warning: didn't complete main cycle on time
+  IND_SW_ERR                          = 17  // Software error
 } IndicatorStatus;
 
 

@@ -28,10 +28,22 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
+// Note the order of includes.  hardware_serial2.h actually overrides
+// the inclusion of hardware_serial.h within WProgram.h
+
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#include "wiring.h"
+
 #include "hardware_serial2.h"
+
 #include "WProgram.h"
+
 #include "quad_hw.h"
 
 
@@ -41,8 +53,12 @@
 //
 //=============================================================================
 
-#define ESTIMATE_EARTH_ACCEL      0
-#define SUPPORT_TELEMENTRY        1
+#define AUTO_ZERO_RECEIVER_ROLL_PITCH  0 // Auto-zero the received roll & pitch
+                                         // controls
+#define SUPPORT_ACCEL                  1 // Usage of accelerometers
+#define SUPPORT_ACCEL_CALIBRATION      0 // Accelerometer calibration
+#define ESTIMATE_EARTH_ACCEL           0
+#define SUPPORT_TELEMENTRY             1
 
 
 //=============================================================================

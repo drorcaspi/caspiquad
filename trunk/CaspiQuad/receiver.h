@@ -105,6 +105,14 @@ int8_t                              // Ret: -1 if near minimum
 receiver_is_at_extreme(uint8_t ch); // In:  channel
 
 
+//======================== receiver_is_near_center() ==========================
+//
+// Check if receiver channel is near the center.
+
+boolean                              // Ret: is near center?
+receiver_is_near_center(uint8_t ch); // In:  channel
+
+
 //========================== receiver_print_stats() ===========================
 //
 // Print some statistics (for debug)

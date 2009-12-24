@@ -62,7 +62,7 @@ class HardwareSerial2: public Print
     void write(uint8_t);
     void flush(void);
     uint8_t available(void);
-    boolean is_available(void) {return (_rx_buffer->head != _rx_buffer->tail)};
+    boolean is_available(void) {return (_rx_buffer->head != _rx_buffer->tail);};
     uint8_t read(void);
 };
 

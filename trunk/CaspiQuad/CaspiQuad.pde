@@ -35,12 +35,16 @@
 
 typedef enum
 {
-  SETUP_GYROS,                  // Waiting for gyros to stabilize and zero
-  SETUP_RECEIVER_ROTATIONS,     // Waiting for receiver pitch, roll, yaw zero
-  SETUP_RECEIVER_THROTTLE_MAX,  // Waiting for receiver throttle maximum
-  SETUP_RECEIVER_THROTTLE_MIN,  // Waiting for receiver throttle minimum
-  SETUP_ARMING,                 // Arming for flight
-  SETUP_ERR                     // Setup error
+  SETUP_GYROS,                      // Waiting for gyros to stabilize and zero
+  SETUP_RECEIVER_ROTATIONS,         // Waiting for receiver pitch, roll, yaw zero
+  SETUP_RECEIVER_THROTTLE_MAX,      // Waiting for receiver throttle maximum
+  SETUP_RECEIVER_THROTTLE_MIN,      // Waiting for receiver throttle minimum
+  SETUP_ARMING,                     // Arming for flight
+  SETUP_RECEIVER_ROLL_CENTER_WAIT,  // Interim state
+  SETUP_RECEIVER_ROLL_CENTER,       // Setting the roll trim
+  SETUP_RECEIVER_PITCH_CENTER_WAIT, // Interim state
+  SETUP_RECEIVER_PITCH_CENTER,      // Setting the pitch trim
+  SETUP_ERR                         // Setup error
 } SetupState;
 
 // Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
@@ -179,8 +183,10 @@ void setup()
   indicators_init();
   eeprom_init();
   motors_init();
+#if SUPPORT_ACCEL
   if (!accel_init())
     indicators_set(IND_HW_ERR_ACCEL_INIT);
+#endif
 
   eeprom_addr = flight_control_read_eeprom();
   
@@ -355,12 +361,14 @@ void loop()
       indicators_set(IND_BAT_WARN);
   }
   
+#if SUPPORT_ACCEL
   // Read the accelerometers
   
   accel_update();
-    
+  
 #if PRINT_ACCEL
   accel_print_stats();
+#endif
 #endif
 
   // Read gyros, center and scale
@@ -487,13 +495,14 @@ void loop()
           // if one function returns false.  We need all the functions to by
           // called in every cycle.
   
-          if (((receiver_rot[PITCH].find_zero() &
+          if (((receiver_rot[YAW].find_zero()   &
+#if AUTO_ZERO_RECEIVER_ROLL_PITCH
+                receiver_rot[PITCH].find_zero() &
                 receiver_rot[ROLL].find_zero()  &
-                receiver_rot[YAW].find_zero()   &
+#endif
                 receiver_throttle.find_min()) != 0)    &&
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
-  
             indicators_set(IND_SETUP_NEXT2);
             setup_state = SETUP_RECEIVER_THROTTLE_MAX;
             setup_cycles = 0;
@@ -512,7 +521,16 @@ void loop()
         case SETUP_RECEIVER_THROTTLE_MAX:
           // Wait until the the throttle is stable at maximum.
           // No wait timeout since it depends on the operator.
-  
+
+          if (receiver_is_at_extreme(YAW_CH) ==  -1) 
+          {
+            // Yaw stick @ right, on to roll center setup state
+            
+            indicators_set(IND_SETUP_ROLL_CENTER);
+            setup_state = SETUP_RECEIVER_ROLL_CENTER_WAIT;
+            setup_cycles = 0;
+          }
+          
           if ((receiver_throttle.find_max()) &&
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
@@ -574,7 +592,67 @@ void loop()
           };
           
           break;
-  
+
+        case SETUP_RECEIVER_ROLL_CENTER_WAIT:
+          // Wait until yaw stick is back to center
+          
+          if (receiver_is_near_center(YAW_CH))
+            setup_state = SETUP_RECEIVER_ROLL_CENTER;
+
+          break;
+          
+        case SETUP_RECEIVER_ROLL_CENTER:
+          
+          if (receiver_is_at_extreme(YAW_CH) ==  -1) 
+          {
+            // Yaw stick @ right, on to pitch center setup state
+            
+            indicators_set(IND_SETUP_PITCH_CENTER);
+            setup_state = SETUP_RECEIVER_PITCH_CENTER_WAIT;
+            setup_cycles = 0;
+          }
+
+          // Indicate roll stick state
+          
+          if (receiver_rot[ROLL].get_rotation() > 0)
+            indicators_set(IND_ROT_POSITIVE);
+          if (receiver_rot[ROLL].get_rotation() < 0)
+            indicators_set(IND_ROT_NEGATIVE);
+          else
+            indicators_set(IND_SETUP);
+
+          break;
+
+        case SETUP_RECEIVER_PITCH_CENTER_WAIT:
+          // Wait until yaw stick is back to center
+          
+          if (receiver_is_near_center(YAW_CH))
+            setup_state = SETUP_RECEIVER_PITCH_CENTER;
+        
+          break;
+            
+        case SETUP_RECEIVER_PITCH_CENTER:
+          
+          if (receiver_is_at_extreme(YAW_CH) ==  -1) 
+          {
+            // Yaw stick @ right, backup to initial setup state
+            
+            indicators_set(IND_SETUP);
+            setup_state = SETUP_GYROS;
+            setup_cycles = 0;
+          }
+
+          // Indicate pitch stick state
+          
+          if (receiver_rot[PITCH].get_rotation() > 0)
+            indicators_set(IND_ROT_POSITIVE);
+          if (receiver_rot[PITCH].get_rotation() < 0)
+            indicators_set(IND_ROT_NEGATIVE);
+          else
+            indicators_set(IND_SETUP);
+        
+          break;
+          
         case SETUP_ERR:
           // Wait for a short time, then start the setup from the beginning
         

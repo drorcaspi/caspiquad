@@ -129,9 +129,47 @@ static const uint8_t setup_next3_led_pattern[] PROGMEM = {
                                                            10,
                                                            PATTERN_END
                                                          };
+static const uint8_t setup_roll_center_led_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_ONCE,
+                                                           15, 1,
+                                                            1, 1,
+                                                            1, 5,
+                                                            1, 1,
+                                                           10,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_pitch_center_led_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_ONCE,
+                                                           15, 1,
+                                                            1, 1,
+                                                            1, 5,
+                                                            1, 5,
+                                                            1, 1,
+                                                           10,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t rot_positive_led_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_REPEAT,
+                                                            5, 1,
+                                                            1, 5,
+                                                            1, 5,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t rot_negative_led_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_REPEAT,
+                                                            5, 1,
+                                                            1, 1,
+                                                            5, 5,
+                                                           PATTERN_END
+                                                         };
 static const uint8_t setup_err_led_pattern[]   PROGMEM = {
                                                            PATTERN_ONCE,
                                                            15, 1,
+                                                            1, 1,
                                                             1, 1,
                                                             1, 1,
                                                             1, 1,
@@ -196,14 +234,18 @@ static const prog_uint8_t *const p_led_patterns[] PROGMEM =
   setup_next1_led_pattern,
   setup_next2_led_pattern,
   setup_next3_led_pattern,
-  setup_err_led_pattern,   // IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT
-  setup_err_led_pattern,   // IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT
+  setup_err_led_pattern,          // IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT
+  setup_err_led_pattern,          // IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT
+  setup_roll_center_led_pattern,  // IND_SETUP_ROLL_CENTER
+  setup_pitch_center_led_pattern, // IND_SETUP_PITCH_CENTER
+  rot_positive_led_pattern,       // IND_ROT_POSITIVE
+  rot_positive_led_pattern,       // IND_ROT_NEGATIVE
   arming_led_pattern,
   flight_led_pattern,
   bat_warn_led_pattern,
   bat_low_led_pattern,
-  hw_err_led_pattern,      // IND_HW_ERR_ACCEL_INIT
-  sw_warn_led_pattern,     // IND_SW_WARN_LOOP_CYCLE
+  hw_err_led_pattern,             // IND_HW_ERR_ACCEL_INIT
+  sw_warn_led_pattern,            // IND_SW_WARN_LOOP_CYCLE
   sw_err_led_pattern
 };
 
@@ -232,6 +274,43 @@ static const uint8_t setup_next3_buz_pattern[] PROGMEM = {
                                                             1, 1,
                                                             1, 1,
                                                             1,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_roll_center_buz_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_ONCE,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 5,
+                                                            1, 1,
+                                                           10,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t setup_pitch_center_buz_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_ONCE,
+                                                            1, 1,
+                                                            1, 1,
+                                                            1, 5,
+                                                            1, 5,
+                                                            1, 1,
+                                                           10,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t rot_positive_buz_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_REPEAT,
+                                                            5, 1,
+                                                            1, 5,
+                                                            1, 5,
+                                                           PATTERN_END
+                                                         };
+static const uint8_t rot_negative_buz_pattern[] PROGMEM =
+                                                         {
+                                                           PATTERN_REPEAT,
+                                                            5, 1,
+                                                            1, 1,
+                                                            5, 5,
                                                            PATTERN_END
                                                          };
 static const uint8_t setup_err_buz_pattern[]   PROGMEM = {
@@ -297,14 +376,18 @@ static const prog_uint8_t *const p_buz_patterns[] PROGMEM =
   setup_next1_buz_pattern,
   setup_next2_buz_pattern,
   setup_next3_buz_pattern,
-  setup_err_buz_pattern,   // IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT
-  setup_err_buz_pattern,   // IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT
+  setup_err_buz_pattern,          // IND_SETUP_ERR_SENSORS_SETUP_TIMEOUT
+  setup_err_buz_pattern,          // IND_SETUP_ERR_THROTTLE_MIN_TIMEOUT
+  setup_roll_center_buz_pattern,  // IND_SETUP_ROLL_CENTER
+  setup_pitch_center_buz_pattern, // IND_SETUP_PITCH_CENTER
+  rot_positive_buz_pattern,       // IND_ROT_POSITIVE
+  rot_positive_buz_pattern,       // IND_ROT_NEGATIVE
   arming_buz_pattern,
   flight_buz_pattern,
   bat_warn_buz_pattern,
   bat_low_buz_pattern,
-  hw_err_buz_pattern,      // IND_HW_ERR_ACCEL_INIT
-  sw_warn_buz_pattern,     // IND_SW_WARN_LOOP_CYCLE
+  hw_err_buz_pattern,             // IND_HW_ERR_ACCEL_INIT
+  sw_warn_buz_pattern,            // IND_SW_WARN_LOOP_CYCLE
   sw_err_buz_pattern
 };
 

@@ -104,6 +104,14 @@
 #define RECEIVER_HIGH_THRESHOLD (1800 / RECEIVER_TICK)
 
 //-----------------------------------------------------------------------------
+// Lower and upper thresholds, between which the receiver input is considered
+// to be near the center
+//-----------------------------------------------------------------------------
+
+#define RECEIVER_CENTER_LOWER_THRESHOLD (1400 / RECEIVER_TICK)
+#define RECEIVER_CENTER_UPPER_THRESHOLD (1600 / RECEIVER_TICK)
+
+//-----------------------------------------------------------------------------
 //
 // Receiver Rotation Definitions
 // =============================
@@ -408,6 +416,31 @@ receiver_is_at_extreme(uint8_t ch) // In:  channel
     
     else if (raw < (uint16_t)RECEIVER_LOW_THRESHOLD)
       result = -1;
+  }
+
+  return result;
+}
+
+
+//======================== receiver_is_near_center() ==========================
+//
+// Check if receiver channel is near the center.
+
+boolean                              // Ret: is near center?
+receiver_is_near_center(uint8_t ch)  // In:  channel
+
+{
+  uint16_t raw;
+  boolean  result = false;
+  
+  
+  if (receiver_get_status())
+  {
+    raw = receiver_get_current_raw(ch);
+    
+    if ((raw > (uint16_t)RECEIVER_CENTER_LOWER_THRESHOLD) &&
+        (raw < (uint16_t)RECEIVER_CENTER_UPPER_THRESHOLD))
+      result = true;
   }
 
   return result;
