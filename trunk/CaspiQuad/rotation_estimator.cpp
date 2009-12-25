@@ -129,7 +129,7 @@ RotationIntegrator::estimate(
 };
 
 
-//========================= class YawEstimator ================================
+//========================= class RotationManualEstimator =====================
 //
 // This class implements a yaw angle estimator based on rotation rate
 // input, using an integrator, and control input based on user yaw stick
@@ -153,9 +153,9 @@ RotationIntegrator::estimate(
 
 //============================== Constructor ==================================
 //
-// Initializes a YawEstimator object
+// Initializes a RotationManualEstimator object
 
-YawEstimator::YawEstimator()
+RotationManualEstimator::RotationManualEstimator()
 
 {
   reset();
@@ -169,7 +169,7 @@ YawEstimator::YawEstimator()
 // rotation angle measurements.
 
 int16_t                         // Ret: New rotation estimate
-YawEstimator::estimate(
+RotationManualEstimator::estimate(
   float   rotation_rate_in,     // In:  Rotation rate measurement, in rad/sec,
                                 //      scaled from gyro reading
   boolean is_user_command)      // In:  Indicates if the user is commanding
