@@ -163,6 +163,10 @@ typedef enum
 #define ROT_NONE      ((int16_t)ROT_SCALE_PI)
                                    // Represents no valid rotation measurement
 
+// Convert a rotation value to degrees
+
+#define ROT_TO_DEG(_rot) ((int16_t)(_rot) / (int16_t)((uint16_t)ROT_SCALE_PI / 180))
+
 
 //=============================================================================
 //

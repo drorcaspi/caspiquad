@@ -1,4 +1,3 @@
-#if ESTIMATE_EARTH_ACCEL
 //=============================================================================
 //
 // Acceleration Translation to Earth Axes
@@ -27,6 +26,9 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+
+#if ESTIMATE_EARTH_ACCEL
+
 #include <avr/pgmspace.h>
 //#include "accel.h"
 #include "accel_translation.h"
@@ -69,6 +71,11 @@ estimate_earth_z_accel(
   for (rot = ROLL; rot <= PITCH; rot++)
   {
     temp_rot_rad = rot_rad[rot];
+    
+#if PRINT_TRANSLATED_ACCEL
+    Serial.print(ROT_TO_DEG(temp_rot_rad), DEC);
+    Serial.print('\t');
+#endif
 
     // Find absolute value, but remember if it was negative or positive
     // for later usage.
@@ -106,7 +113,7 @@ estimate_earth_z_accel(
   // measured Z acceleration
   
   z_accel = ((uint8_t)pgm_read_byte(&(z_acc_z_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
-             (int16_t)meas_accel[Z_AXIS]) >> 2;
+             (int16_t)meas_accel[Z_AXIS]) >> 1;
 
   // Get the measured X factor from the table and multiply by the
   // measured X acceleration, then subtract or add if the pitch
