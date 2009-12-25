@@ -619,9 +619,10 @@ void loop()
 
           // Indicate roll stick state
           
-          if (receiver_rot[ROLL].get_rotation() > 0)
+          temp_receiver_rot_command = receiver_rot[ROLL].get_rotation();
+          if (temp_receiver_rot_command > 0)
             indicators_set(IND_ROT_POSITIVE);
-          if (receiver_rot[ROLL].get_rotation() < 0)
+          else if (temp_receiver_rot_command < 0)
             indicators_set(IND_ROT_NEGATIVE);
           else
             indicators_set(IND_SETUP);
@@ -648,10 +649,11 @@ void loop()
           }
 
           // Indicate pitch stick state
-          
-          if (receiver_rot[PITCH].get_rotation() > 0)
+
+          temp_receiver_rot_command = receiver_rot[PITCH].get_rotation();
+          if (temp_receiver_rot_command > 0)
             indicators_set(IND_ROT_POSITIVE);
-          if (receiver_rot[PITCH].get_rotation() < 0)
+          else if (temp_receiver_rot_command < 0)
             indicators_set(IND_ROT_NEGATIVE);
           else
             indicators_set(IND_SETUP);
