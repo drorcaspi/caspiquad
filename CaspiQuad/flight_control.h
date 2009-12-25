@@ -53,26 +53,27 @@ typedef enum
 // TODO: these variables are accessed by serial_telemetry.cpp, should be
 // TODO: replaced by accessor functions
 
-extern FlightState        flight_state;
+extern FlightState             flight_state;
 
-extern uint16_t           avg_cycle_msec;
-extern uint8_t            max_cycle_msec;
+extern uint16_t                avg_cycle_msec;
+extern uint8_t                 max_cycle_msec;
 
-extern Gyro               gyro[NUM_ROTATIONS];
-extern RotationEstimator  rot_estimator[2];
-extern YawEstimator       yaw_estimator;
+extern Gyro                    gyro[NUM_ROTATIONS];
+extern RotationEstimator       rot_estimator[2];
+extern RotationManualEstimator yaw_estimator;
 
-extern PID                rot_rate_pid[NUM_ROTATIONS];
-extern PID                rot_pid[NUM_ROTATIONS];
+extern PID                     rot_rate_pid[NUM_ROTATIONS];
+extern PID                     rot_pid[NUM_ROTATIONS];
 
-extern float              receiver_rot_rate_gain;  // (rad/sec)
-extern uint8_t            receiver_rot_gain;
-extern uint16_t           receiver_rot_limit;
+extern float                   receiver_rot_rate_gain;  // (rad/sec)
+extern uint8_t                 receiver_rot_gain;
+extern uint16_t                receiver_rot_limit;
 
-extern ReceiverRotation   receiver_rot[NUM_ROTATIONS];
+extern ReceiverRotation        receiver_rot[NUM_ROTATIONS];
 
-extern int16_t            motor_throttle_command;
-extern int16_t            motor_rot_command[NUM_ROTATIONS];
+extern int16_t                 motor_throttle_command;
+extern int16_t                 motor_rot_command[NUM_ROTATIONS];
+
 
 //=============================================================================
 //

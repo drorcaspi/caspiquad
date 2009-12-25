@@ -47,10 +47,15 @@ typedef enum
   SETUP_ERR                         // Setup error
 } SetupState;
 
-// Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
-// correct (yaw is 0)
+// Threshold for yaw flutter filtering around 0.  Within this range,
+// yaw control is assumed 0
 
-#define RECEIVER_YAW_ZERO_MAX 32
+#define RECEIVER_YAW_FLUTTER_MAX 16
+
+// Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
+// correct (yaw is 0), resetting the yaw integrator
+
+#define RECEIVER_YAW_ZERO_MAX    32
 
 
 //=============================================================================
@@ -76,7 +81,7 @@ static uint16_t    setup_cycles   = 0;
 
 Gyro               gyro[NUM_ROTATIONS];
 RotationEstimator  rot_estimator[2];
-YawEstimator       yaw_estimator;
+RotationManualEstimator       yaw_estimator;
 
 PID                rot_rate_pid[NUM_ROTATIONS];
 PID                rot_pid[NUM_ROTATIONS];
@@ -699,6 +704,12 @@ void loop()
         rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
                                     rot_measurement[rot]);
     };
+
+    // Eliminite small yaw flutter around 0
+    
+    if ((receiver_rot_command[YAW] <= (int16_t) RECEIVER_YAW_FLUTTER_MAX)   &&
+        (receiver_rot_command[YAW] >= (int16_t)-RECEIVER_YAW_FLUTTER_MAX))
+      receiver_rot_command[YAW] = 0;
     
     // For yaw, we don't have a real rotation angle measurement.  The estimator
     // gets a paramter that tells it id the operator is currently controlling yaw,

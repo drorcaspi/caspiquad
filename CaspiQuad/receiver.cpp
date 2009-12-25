@@ -121,8 +121,7 @@
 //
 //-----------------------------------------------------------------------------
 
-#define RECEIVER_ROTATION_THRESHOLD0   16
-#define RECEIVER_ROTATION_THRESHOLD1  200
+#define RECEIVER_ROTATION_THRESHOLD  200
 
 //-----------------------------------------------------------------------------
 //
@@ -613,32 +612,21 @@ ReceiverRotation::get_rotation(void)
     
     ret_val = receiver_get_current_raw(ch) - raw_zero;
 
-    if ((ret_val <= (int16_t) RECEIVER_ROTATION_THRESHOLD0)   &&
-        (ret_val >= (int16_t)-RECEIVER_ROTATION_THRESHOLD0))
+    diff = ret_val - (int16_t)RECEIVER_ROTATION_THRESHOLD;
+    if (diff > 0)
     {
-      // A small margin around 0 is considered 0
+      // Double the slope at the positive edge
       
-      ret_val = 0;
+      ret_val += diff;
     }
 
     else
     {
-      diff = ret_val - (int16_t)RECEIVER_ROTATION_THRESHOLD1;
-      if (diff > 0)
+      diff = ret_val + (int16_t)RECEIVER_ROTATION_THRESHOLD;
+      if (diff < 0)
       {
-        // Double the slope at the positive edge
-        
+        // Double the slope at the negative edge
         ret_val += diff;
-      }
-
-      else
-      {
-        diff = ret_val + (int16_t)RECEIVER_ROTATION_THRESHOLD1;
-        if (diff < 0)
-        {
-          // Double the slope at the negative edge
-          ret_val += diff;
-        }
       }
     }
   }

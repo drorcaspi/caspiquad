@@ -51,7 +51,7 @@ protected:
 public:
   //============================== Constructor ==================================
   //
-  // Initializes a RotationEstimator object
+  // Initializes a RotationIntegrator object
   
   RotationIntegrator(void);
   
@@ -81,9 +81,9 @@ public:
 };
 
 
-//========================= class YawEstimator ================================
+//========================= class RotationManualEstimator =====================
 //
-// This class implements a yaw angle estimator based on rotation rate
+// This class implements a rotation angle estimator based on rotation rate
 // input, using an integrator, and control input based on user yaw stick
 // command 
 //
@@ -103,7 +103,7 @@ public:
 //
 //=============================================================================
 
-class YawEstimator: public RotationIntegrator
+class RotationManualEstimator: public RotationIntegrator
 
 {
 private:
@@ -113,9 +113,9 @@ private:
 public:
   //============================== Constructor ==================================
   //
-  // Initializes a RotationEstimator object
+  // Initializes a RotationManualEstimator object
   
-  YawEstimator(void);
+  RotationManualEstimator(void);
 
   //============================== estimate() ===================================
   //
