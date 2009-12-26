@@ -120,10 +120,10 @@ estimate_earth_z_accel(
   // was positive/negative
   
   if (rot_negative[PITCH])
-    z_accel += ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
+    z_accel -= ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
                 (int16_t)meas_accel[X_AXIS]) >> 2;
   else
-    z_accel -= ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
+    z_accel += ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
                 (int16_t)meas_accel[X_AXIS]) >> 2;
     
   // Get the measured Y factor from the table and multiply by the
@@ -131,10 +131,10 @@ estimate_earth_z_accel(
   // was positive/negative
     
   if (rot_negative[ROLL])
-    z_accel += ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])) *
+    z_accel -= ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])) *
                 (int16_t)meas_accel[Y_AXIS]) >> 2;
   else
-    z_accel -= ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])) *
+    z_accel += ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])) *
                 (int16_t)meas_accel[Y_AXIS]) >> 2;
 
 #if PRINT_TRANSLATED_ACCEL
