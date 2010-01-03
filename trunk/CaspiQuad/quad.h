@@ -167,6 +167,10 @@ typedef enum
 
 #define ROT_TO_DEG(_rot) ((int16_t)(_rot) / (int16_t)((uint16_t)ROT_SCALE_PI / 180))
 
+// Convert a rotation value to radians
+
+#define ROT_TO_RAD(_rot) ((float)(_rot) / (float)ROT_SCALE_RAD)
+
 
 //=============================================================================
 //
