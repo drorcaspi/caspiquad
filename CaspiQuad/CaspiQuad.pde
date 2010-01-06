@@ -7,6 +7,7 @@
 #include "motors.h"
 #include "gyro.h"
 #include "accel.h"
+#include "pressure.h"
 #include "receiver.h"
 #include "pid.h"
 #include "rotation_estimator.h"
@@ -183,6 +184,8 @@ void setup()
 
   Serial.begin(115200);
 
+  Wire.begin();   // join i2c bus (address optional for master)
+
   adc_init();
   bat_sensor_init();
   indicators_init();
@@ -191,6 +194,9 @@ void setup()
 #if SUPPORT_ACCEL
   if (!accel_init())
     indicators_set(IND_HW_ERR_ACCEL_INIT);
+#endif
+#if SUPPORT_PRESSURE
+  pressure_init();
 #endif
 
   eeprom_addr = flight_control_read_eeprom();
@@ -374,6 +380,10 @@ void loop()
 #if PRINT_ACCEL
   accel_print_stats();
 #endif
+#endif
+
+#if SUPPORT_PRESSURE
+  pressure_update();
 #endif
 
   // Read gyros, center and scale

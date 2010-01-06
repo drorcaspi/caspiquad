@@ -37,6 +37,9 @@
 
 #if SUPPORT_PRESSURE
 
+#include "pressure.h"
+
+
 //=============================================================================
 //
 // Local Definitions
@@ -54,7 +57,13 @@
 //
 //-----------------------------------------------------------------------------
 
-#define BMP085_ADDRESS      0xEE   // Device Addresss
+#define BMP085_ADDRESS          0xEE   // Device Addresss
+
+#if PRESSURE_EXAMPLE
+  #define BMP085_OSS            0      // Over-sampling setting
+#else
+  #define BMP085_OSS            3      // Over-sampling setting
+#endif
 
 // Device Registers
 
@@ -100,13 +109,7 @@ typedef enum
   BMP085_MC,
   BMP085_MD,
   BMP085_EEPROM_NUM
-} BmpEepromData
-#if PRESSURE_EXAMPLE
-// Initialize with the example data in the BMP085 data sheet
-
-= {408, -72, -14383, 32741, 32757, 23153, 6190, 4, -32767, -8711, 2868}
-#endif
-;
+} BmpEepromData;
 
 typedef enum
 {
@@ -127,8 +130,20 @@ typedef enum
 //
 //=============================================================================
 
-static int16_t bmp085_eeprom[BMP085_EEPROM_NUM];
+static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
+#if PRESSURE_EXAMPLE
+// Initialize with the example data in the BMP085 data sheet
 
+= {408, -72, -14383, 32741, 32757, 23153, 6190, 4, -32767, -8711, 2868}
+#endif
+;
+
+
+//=============================================================================
+//
+// Public Functions
+//
+//=============================================================================
 
 //=============================== pressue_init() ==============================
 //
@@ -136,13 +151,12 @@ static int16_t bmp085_eeprom[BMP085_EEPROM_NUM];
 // Should be called on system initalization
 
 void
-pressue_init(void)
+pressure_init(void)
+
 {
   uint8_t i;
   int16_t temp;
   
-
-  // TODO: Wire.begin();   // join i2c bus (address optional for master)
 
 #if (! PRESSURE_EXAMPLE)
   // Read the EEPROM calibration data
@@ -215,7 +229,7 @@ pressure_update(void)
       break;
 
     case PRESSURE_CYCLE_READ_TEMP:
-      // Read uncompensated temperature value
+      // Read uncompensated temperature value (16 bits)
       
 #if PRESSURE_EXAMPLE
       ut = 27898;
@@ -236,13 +250,17 @@ pressure_update(void)
       x1s = ((uint32_t)(ut - bmp085_eeprom[BMP085_AC6]) *
              (uint16_t)(bmp085_eeprom[BMP085_AC5])) >> 15;
       x2s = ((int32_t)bmp085_eeprom[BMP085_MC] << 11) / (x1s + bmp085_eeprom[BMP085_MD]);
+      //Serial.print(x1s, DEC);
+      //Serial.print('\t');
+      //Serial.print(x2s, DEC);
+      //Serial.print('\t');
       b5 = x1s + x2s;
       b6 = b5 - 4000;
       
 #if PRINT_PRESSURE
       temperature_01c = (b5 + 8) >> 4;
-      Serial.print(temperature_01c, DEC);
-      Serial.print('\t');
+      //Serial.print(temperature_01c, DEC);
+      //Serial.print('\t');
 #endif
       
       // Initiate uncompensated pressure value read
@@ -258,7 +276,7 @@ pressure_update(void)
 
     case PRESSURE_CYCLE_READ_PRESSURE:
 
-      // Read uncompensated pressure value
+      // Read uncompensated pressure value (19 bits)
       
 #if PRESSURE_EXAMPLE
       up = 23843;
@@ -279,22 +297,42 @@ pressure_update(void)
 
       // Calculate true pressure
 
+      //Serial.print(b6, DEC);
+      //Serial.print('\t');
       x1 = ((int32_t)(bmp085_eeprom[BMP085_B2]) * (((int32_t)b6 * (int32_t)b6) >> 12)) >> 11;
       x2 = ((int32_t)(bmp085_eeprom[BMP085_AC2]) * (int32_t)b6) >> 11;
       x3 = x1 + x2;
-      b3 = (((((int32_t)(bmp085_eeprom[BMP085_AC1]) << 2) + x3) << 3) + 2) >> 2;
-      x1 = (bmp085_eeprom[BMP085_AC3] * b6) >> 13;
-      x2 = (bmp085_eeprom[BMP085_B1] * ((b6 * b6) >> 12)) >> 16;
+      b3 = (((((int32_t)(bmp085_eeprom[BMP085_AC1]) << 2) + x3) << BMP085_OSS) + 2) >> 2;
+      //Serial.print(b3, DEC);
+      //Serial.print('\t');
+      x1 = ((int32_t)(bmp085_eeprom[BMP085_AC3]) * (int32_t)b6) >> 13;
+      x2 = ((int32_t)(bmp085_eeprom[BMP085_B1]) * (((int32_t)b6 * (int32_t)b6) >> 12)) >> 16;
       x3 = ((x1 + x2) + 2) >> 2;
+      //Serial.print(x1, DEC);
+      //Serial.print('\t');
+      //Serial.print(x2, DEC);
+      //Serial.print('\t');
+      //Serial.print(x3, DEC);
+      //Serial.print('\t');
       b4 = ((uint16_t)(bmp085_eeprom[BMP085_AC4]) * (uint32_t)(x3 + 32768)) >> 15;
-      b7 = (up - (uint32_t)b3) * (50000 >> 3);
+      //Serial.print(b4, DEC);
+      //Serial.print('\t');
+      b7 = (up - (uint32_t)b3) * (50000 >> BMP085_OSS);
       if (b7 < 0x80000000)
         pressure_pa = (b7 * 2) / b4;
       else
         pressure_pa = (b7 / b4) * 2;
+      //Serial.print(pressure_pa, DEC);
+      //Serial.print('\t');
       x1 = (pressure_pa >> 8) * (pressure_pa >> 8);
+      //Serial.print(x1, DEC);
+      //Serial.print('\t');
       x1 = (x1 * 3038) >> 16;
       x2 = (-7357 * pressure_pa) >> 16;
+      //Serial.print(x1, DEC);
+      //Serial.print('\t');
+      //Serial.print(x2, DEC);
+      //Serial.print('\t');
       pressure_pa += (x1 + x2 + 3791) >> 4;
       
 #if PRINT_PRESSURE

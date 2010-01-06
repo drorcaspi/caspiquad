@@ -121,8 +121,6 @@ accel_init(void)
   current_accel_data[Y_AXIS] = 0;
   current_accel_data[Z_AXIS] = (int8_t)ACCEL_TYP_1G;
       
-  Wire.begin();   // join i2c bus (address optional for master)
-
   // Read the WHO_AM_I register to make sure it's there
   
   Wire.beginTransmission(LIS302DL_0_ADDRESS);
