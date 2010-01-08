@@ -2,6 +2,7 @@
 #include <Wire.h>
 
 #include "quad.h"
+#include "i2c.h"
 #include "adc.h"
 #include "bat_sensor.h"
 #include "motors.h"
@@ -184,7 +185,7 @@ void setup()
 
   Serial.begin(115200);
 
-  Wire.begin();   // join i2c bus (address optional for master)
+  i2c_init();
 
   adc_init();
   bat_sensor_init();

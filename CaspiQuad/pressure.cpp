@@ -33,7 +33,7 @@
 
 #include "quad.h"
 
-#include <Wire.h>
+#include "i2c.h"
 
 #if SUPPORT_PRESSURE
 
@@ -49,7 +49,7 @@
 // Test flag.  If != 0, use example data from the BMP085 data sheet instead of
 // real data.
 
-#define PRESSURE_EXAMPLE    1   
+#define PRESSURE_EXAMPLE    0   
 
 //-----------------------------------------------------------------------------
 //
@@ -57,7 +57,7 @@
 //
 //-----------------------------------------------------------------------------
 
-#define BMP085_ADDRESS          0xEE   // Device Addresss
+#define BMP085_ADDRESS          0x77   // Device Addresss
 
 #if PRESSURE_EXAMPLE
   #define BMP085_OSS            0      // Over-sampling setting
@@ -159,23 +159,18 @@ pressure_init(void)
   
 
 #if (! PRESSURE_EXAMPLE)
-  // Read the EEPROM calibration data
+  // Serial.print("BMP085 EEPROM\t");
   
-  Wire.beginTransmission(BMP085_ADDRESS);
-  Wire.send(BMP085_AC1_REG); 
-  Wire.endTransmission();
-  Wire.requestFrom(BMP085_ADDRESS, BMP085_EEPROM_NUM * 2);
+  // Read the EEPROM calibration data
 
-  for (i = 0; i < BMP085_EEPROM_NUM * 2; i++)
+  i2c_start_read(BMP085_ADDRESS, BMP085_AC1_REG, BMP085_EEPROM_NUM * 2);
+
+  for (i = 0; i < BMP085_EEPROM_NUM; i++)
   {
-    while (Wire.available() == 0);
-    temp = Wire.receive() << 8;
-    while (Wire.available() == 0);
-    temp += Wire.receive();
-    bmp085_eeprom[i] = temp;
+    bmp085_eeprom[i] = i2c_read_next_16();
     
 #if PRINT_PRESSURE
-    Serial.print(temp, DEC);
+    Serial.print(bmp085_eeprom[i], DEC);
     Serial.print('\t');
 #endif
   };
@@ -215,15 +210,15 @@ pressure_update(void)
   int32_t        x3;
 
   
+  //Serial.print(pressure_cycle, DEC);
+  //Serial.print('\t');
+  
   switch (pressure_cycle)
   {
     case PRESSURE_CYCLE_INIT:
       
 #if (! PRESSURE_EXAMPLE)
-      Wire.beginTransmission(BMP085_ADDRESS);
-      Wire.send(BMP085_CONTROL_REG); 
-      Wire.send(BMP085_TEMPERATURE);
-      Wire.endTransmission();
+      i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_TEMPERATURE);
 #endif
 
       break;
@@ -234,15 +229,7 @@ pressure_update(void)
 #if PRESSURE_EXAMPLE
       ut = 27898;
 #else
-      Wire.beginTransmission(BMP085_ADDRESS);
-      Wire.send(BMP085_SENSOR_MSB_REG);
-      Wire.endTransmission();
-    
-      Wire.requestFrom(BMP085_ADDRESS, 2);
-      while (Wire.available() == 0);
-      ut = (uint16_t)Wire.receive() << 8;
-      while (Wire.available() == 0);
-      ut += (uint16_t)Wire.receive();
+      ut = i2c_read_16(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG);
 #endif
 
       // Calculate true temperature
@@ -259,17 +246,14 @@ pressure_update(void)
       
 #if PRINT_PRESSURE
       temperature_01c = (b5 + 8) >> 4;
-      //Serial.print(temperature_01c, DEC);
-      //Serial.print('\t');
+      Serial.print(temperature_01c, DEC);
+      Serial.print('\t');
 #endif
       
       // Initiate uncompensated pressure value read
 
 #if (! PRESSURE_EXAMPLE)
-      Wire.beginTransmission(BMP085_ADDRESS);
-      Wire.send(BMP085_CONTROL_REG); 
-      Wire.send(BMP085_PRESSURE_3);
-      Wire.endTransmission();
+      i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_PRESSURE_3);
 #endif
 
       break;
@@ -281,17 +265,7 @@ pressure_update(void)
 #if PRESSURE_EXAMPLE
       up = 23843;
 #else
-      Wire.beginTransmission(BMP085_ADDRESS);
-      Wire.send(BMP085_SENSOR_MSB_REG);
-      Wire.endTransmission();
-    
-      Wire.requestFrom(BMP085_ADDRESS, 3);
-      while (Wire.available() == 0);
-      up = (uint32_t)Wire.receive() << 16;
-      while (Wire.available() == 0);
-      up += (uint32_t)Wire.receive() << 8;
-      while (Wire.available() == 0);
-      up += (uint32_t)Wire.receive();
+      up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG);
       up >>= 5;
 #endif
 
