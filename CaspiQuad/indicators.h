@@ -53,8 +53,9 @@ typedef enum
   IND_BAT_WARN                        = 13, // Battery warning
   IND_BAT_LOW                         = 14, // Battery empty
   IND_HW_ERR_ACCEL_INIT               = 15, // Hardware error: can't read accelerometers 
-  IND_SW_WARN_LOOP_CYCLE              = 16, // Software warning: didn't complete main cycle on time
-  IND_SW_ERR                          = 17  // Software error
+  IND_HW_ERR_PRESSURE_INIT            = 16, // Hardware error: can't read barometer 
+  IND_SW_WARN_LOOP_CYCLE              = 17, // Software warning: didn't complete main cycle on time
+  IND_SW_ERR                          = 18  // Software error
 } IndicatorStatus;
 
 

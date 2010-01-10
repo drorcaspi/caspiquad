@@ -136,7 +136,7 @@ i2c_read_next_16(void)
 
 
   value = (uint16_t)i2c_read_next_8() << 8;
-  value += (uint16_t)i2c_read_next_8();
+  value += i2c_read_next_8();
   
   return value; 
 }
@@ -184,9 +184,9 @@ uint32_t i2c_read_24(uint8_t device_addr,
 
   
   i2c_start_read(device_addr, register_addr, 3);
-  value = (uint16_t)i2c_read_next_8() << 16;
-  value = (uint16_t)i2c_read_next_8() << 8;
-  value += (uint16_t)i2c_read_next_8();
+  value = (uint32_t)i2c_read_next_8() << 16;
+  value += (uint16_t)i2c_read_next_8() << 8;
+  value += i2c_read_next_8();
 
   return value; 
 }

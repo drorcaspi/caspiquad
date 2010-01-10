@@ -32,7 +32,6 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
-
 #include "i2c.h"
 
 #if SUPPORT_PRESSURE
@@ -113,10 +112,9 @@ typedef enum
 
 typedef enum
 {
-  PRESSURE_CYCLE_INIT           = 0,
-  PRESSURE_CYCLE_READ_TEMP      = 1,  // At least 4.5msec to sample
-  PRESSURE_CYCLE_READ_PRESSURE  = 4,  // At least 22.5msec to sample
-  PRESSURE_CYCLE_NUM            = 5
+  PRESSURE_CYCLE_READ_TEMP      = 0,  // At least 4.5msec to sample
+  PRESSURE_CYCLE_READ_PRESSURE  = 3,  // At least 22.5msec to sample
+  PRESSURE_CYCLE_NUM            = 4
 } PressureCycle;
 
 #if (CONTROL_LOOP_CYCLE_MSEC != 10)
@@ -134,7 +132,7 @@ static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
 #if PRESSURE_EXAMPLE
 // Initialize with the example data in the BMP085 data sheet
 
-= {408, -72, -14383, 32741, 32757, 23153, 6190, 4, -32767, -8711, 2868}
+= {408, -72, -14383, 32741, 32757, 23153, 6190, 4, -32768, -8711, 2868}
 #endif
 ;
 
@@ -150,7 +148,7 @@ static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
 // Initialize the pressure sensor module
 // Should be called on system initalization
 
-void
+boolean             // Ret: true if OK, false if failed
 pressure_init(void)
 
 {
@@ -167,18 +165,34 @@ pressure_init(void)
 
   for (i = 0; i < BMP085_EEPROM_NUM; i++)
   {
-    bmp085_eeprom[i] = i2c_read_next_16();
+    temp = i2c_read_next_16();
     
 #if PRINT_PRESSURE
-    Serial.print(bmp085_eeprom[i], DEC);
+    Serial.print(temp, DEC);
     Serial.print('\t');
 #endif
+
+    if ((temp == 0) || (temp == 0xFFFF))
+    {
+      // This is an error, must not happen
+      
+      return false;
+    };
+    
+    bmp085_eeprom[i] = temp;
   };
   
 #if PRINT_PRESSURE
   Serial.println();
 #endif
-#endif  // PRESSURE_EXAMPLE
+
+  // Initiate 1st temperature reading
+  
+  i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_TEMPERATURE);
+
+#endif  // ! PRESSURE_EXAMPLE
+
+  return true;
 };
 
 
@@ -193,8 +207,11 @@ pressure_update(void)
   // Variable names and types are per the algorithm described in the BMP085
   // data sheet
   
-  static uint8_t pressure_cycle   = PRESSURE_CYCLE_INIT;
+  static uint8_t pressure_cycle   = PRESSURE_CYCLE_READ_TEMP;
   static int16_t b6;
+  static int32_t altitude_avg_cm  = 0;
+  static int32_t altitude_zero_cm = 0x80000000;
+  int32_t        altitude_cm;
   int16_t        temperature_01c;
   int32_t        pressure_pa;
   uint16_t       ut;
@@ -215,14 +232,6 @@ pressure_update(void)
   
   switch (pressure_cycle)
   {
-    case PRESSURE_CYCLE_INIT:
-      
-#if (! PRESSURE_EXAMPLE)
-      i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_TEMPERATURE);
-#endif
-
-      break;
-
     case PRESSURE_CYCLE_READ_TEMP:
       // Read uncompensated temperature value (16 bits)
       
@@ -242,7 +251,7 @@ pressure_update(void)
       //Serial.print(x2s, DEC);
       //Serial.print('\t');
       b5 = x1s + x2s;
-      b6 = b5 - 4000;
+      b6 = b5 - 4000;   // Note b6 is static since it's used in a later invokation
       
 #if PRINT_PRESSURE
       temperature_01c = (b5 + 8) >> 4;
@@ -265,8 +274,14 @@ pressure_update(void)
 #if PRESSURE_EXAMPLE
       up = 23843;
 #else
-      up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG);
-      up >>= 5;
+      up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG) >> (8 - BMP085_OSS);
+
+      Serial.print(up, DEC);
+      Serial.print('\t');
+
+      // Initiate next temperature reading
+      
+      i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_TEMPERATURE);
 #endif
 
       // Calculate true pressure
@@ -289,13 +304,15 @@ pressure_update(void)
       //Serial.print(x3, DEC);
       //Serial.print('\t');
       b4 = ((uint16_t)(bmp085_eeprom[BMP085_AC4]) * (uint32_t)(x3 + 32768)) >> 15;
-      //Serial.print(b4, DEC);
-      //Serial.print('\t');
+      Serial.print(b4, DEC);
+      Serial.print('\t');
       b7 = (up - (uint32_t)b3) * (50000 >> BMP085_OSS);
-      if (b7 < 0x80000000)
-        pressure_pa = (b7 * 2) / b4;
+      Serial.print(b7, HEX);
+      Serial.print('\t');
+      if (b7 < (uint32_t)0x80000000)
+        pressure_pa = (b7 << 1) / b4;
       else
-        pressure_pa = (b7 / b4) * 2;
+        pressure_pa = (b7 / b4) << 1;
       //Serial.print(pressure_pa, DEC);
       //Serial.print('\t');
       x1 = (pressure_pa >> 8) * (pressure_pa >> 8);
@@ -312,7 +329,19 @@ pressure_update(void)
 #if PRINT_PRESSURE
       Serial.print(pressure_pa, DEC);
       Serial.print('\t');
-      Serial.println((1079 * (100000 - pressure_pa)) >> 7, DEC);  // Multiply by 8.43
+
+      altitude_cm = (1079 * (100000 - pressure_pa)) >> 7;  // Multiply by 8.43
+      
+      if (altitude_zero_cm == 0x80000000)
+         altitude_zero_cm = altitude_cm;
+         
+      else
+      {
+        altitude_cm -= altitude_zero_cm;
+        altitude_avg_cm -= (altitude_avg_cm >> 4);
+        altitude_avg_cm += altitude_cm;
+      }
+      Serial.println((altitude_avg_cm >> 4), DEC);
 #endif
       
       break;
@@ -322,7 +351,7 @@ pressure_update(void)
   };
 
   if (++pressure_cycle >= PRESSURE_CYCLE_NUM)
-    pressure_cycle = PRESSURE_CYCLE_INIT;
+    pressure_cycle = PRESSURE_CYCLE_READ_TEMP;
 }
 
 

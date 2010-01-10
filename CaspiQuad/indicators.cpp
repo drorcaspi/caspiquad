@@ -245,6 +245,7 @@ static const prog_uint8_t *const p_led_patterns[] PROGMEM =
   bat_warn_led_pattern,
   bat_low_led_pattern,
   hw_err_led_pattern,             // IND_HW_ERR_ACCEL_INIT
+  hw_err_led_pattern,             // IND_HW_ERR_PRESSURE_INIT
   sw_warn_led_pattern,            // IND_SW_WARN_LOOP_CYCLE
   sw_err_led_pattern
 };
@@ -387,6 +388,7 @@ static const prog_uint8_t *const p_buz_patterns[] PROGMEM =
   bat_warn_buz_pattern,
   bat_low_buz_pattern,
   hw_err_buz_pattern,             // IND_HW_ERR_ACCEL_INIT
+  hw_err_buz_pattern,             // IND_HW_ERR_PRESSURE_INIT
   sw_warn_buz_pattern,            // IND_SW_WARN_LOOP_CYCLE
   sw_err_buz_pattern
 };

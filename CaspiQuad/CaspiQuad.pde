@@ -193,11 +193,12 @@ void setup()
   eeprom_init();
   motors_init();
 #if SUPPORT_ACCEL
-  if (!accel_init())
+  if (! accel_init())
     indicators_set(IND_HW_ERR_ACCEL_INIT);
 #endif
 #if SUPPORT_PRESSURE
-  pressure_init();
+  if (! pressure_init())
+    indicators_set(IND_HW_ERR_PRESSURE_INIT);
 #endif
 
   eeprom_addr = flight_control_read_eeprom();
