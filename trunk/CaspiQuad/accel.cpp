@@ -35,11 +35,11 @@
 -----------------------------------------------------------------------------*/
 
 #include "quad.h"
+#include "i2c.h"
 #include <avr/pgmspace.h>
 #include "atan.h"
 #include "accel.h"
 
-#include <Wire.h>
 
 //=============================================================================
 //
@@ -122,16 +122,8 @@ accel_init(void)
   current_accel_data[Z_AXIS] = (int8_t)ACCEL_TYP_1G;
       
   // Read the WHO_AM_I register to make sure it's there
-  
-  Wire.beginTransmission(LIS302DL_0_ADDRESS);
-  Wire.send(LIS302DL_WHO_AM_I); 
-  Wire.endTransmission();
-  Wire.requestFrom(LIS302DL_0_ADDRESS, 1);
-  while(Wire.available())
-  {
-    who_am_i_val = Wire.receive();
-  };
 
+  who_am_i_val = i2c_read_8(LIS302DL_0_ADDRESS, LIS302DL_WHO_AM_I);
   if (who_am_i_val != (uint8_t)LIS302DL_WHO_AM_I_VALUE)
   {
 #if PRINT_ACCEL
@@ -141,13 +133,12 @@ accel_init(void)
     return false;
   }
 
-  // Write CTRL_REG1    
-  Wire.beginTransmission(LIS302DL_0_ADDRESS);
-  Wire.send(LIS302DL_CTRL_REG1);
-  Wire.send(0x47);    // Device on, 100hz, normal mode, all axes enabled,
-                      // +/- 2.3G range
-  Wire.endTransmission();
+  // Write CTRL_REG1 
 
+  i2c_write_8(LIS302DL_0_ADDRESS,
+              LIS302DL_CTRL_REG1,
+              0x47);  // Device on, 100hz, normal mode, all axes enabled,
+                      // +/- 2.3G range
   return true;
 };
 
@@ -160,38 +151,12 @@ void
 accel_update(void)
 
 {
-  // Read X
-  
-  Wire.beginTransmission(LIS302DL_0_ADDRESS);
-  Wire.send(LIS302DL_OUT_X); 
-  Wire.endTransmission();
-  Wire.requestFrom(LIS302DL_0_ADDRESS, 1);
-  while(Wire.available())
-  {
-    current_accel_data[X_AXIS] = (int8_t)Wire.receive();
-  };
-
-  // Read Y
-  
-  Wire.beginTransmission(LIS302DL_0_ADDRESS);
-  Wire.send(LIS302DL_OUT_Y); 
-  Wire.endTransmission();
-  Wire.requestFrom(LIS302DL_0_ADDRESS, 1);
-  while(Wire.available())
-  {
-    current_accel_data[Y_AXIS] = (int8_t)Wire.receive();
-  };
-
-  // Read Z
-  
-  Wire.beginTransmission(LIS302DL_0_ADDRESS);
-  Wire.send(LIS302DL_OUT_Z); 
-  Wire.endTransmission();
-  Wire.requestFrom(LIS302DL_0_ADDRESS, 1);
-  while(Wire.available())
-  {
-    current_accel_data[Z_AXIS] = (int8_t)Wire.receive();
-  };
+  current_accel_data[X_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                  LIS302DL_OUT_X);
+  current_accel_data[Y_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                  LIS302DL_OUT_Y);
+  current_accel_data[Z_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                  LIS302DL_OUT_Z);
 }
 
 

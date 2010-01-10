@@ -48,7 +48,7 @@
 // Initialize the pressure sensor module
 // Should be called on system initalization
 
-void
+boolean             // Ret: true if OK, false if failed
 pressure_init(void);
 
 
