@@ -1,6 +1,6 @@
 //=============================================================================
 //
-// BMP085 Air Pressure Sensor Handler
+// BMP085 Barometric Pressure Sensor Handler
 //
 // Uses TWI (I2C) communicate with the accelerometer
 //
@@ -34,9 +34,9 @@
 #include "quad.h"
 #include "i2c.h"
 
-#if SUPPORT_PRESSURE
+#if SUPPORT_BARO
 
-#include "pressure.h"
+#include "baro.h"
 
 
 //=============================================================================
@@ -48,7 +48,7 @@
 // Test flag.  If != 0, use example data from the BMP085 data sheet instead of
 // real data.
 
-#define PRESSURE_EXAMPLE    0   
+#define BARO_EXAMPLE    0   
 
 //-----------------------------------------------------------------------------
 //
@@ -58,7 +58,7 @@
 
 #define BMP085_ADDRESS          0x77   // Device Addresss
 
-#if PRESSURE_EXAMPLE
+#if BARO_EXAMPLE
   #define BMP085_OSS            0      // Over-sampling setting
 #else
   #define BMP085_OSS            3      // Over-sampling setting
@@ -112,13 +112,13 @@ typedef enum
 
 typedef enum
 {
-  PRESSURE_CYCLE_READ_TEMP      = 0,  // At least 4.5msec to sample
-  PRESSURE_CYCLE_READ_PRESSURE  = 3,  // At least 22.5msec to sample
-  PRESSURE_CYCLE_NUM            = 4
-} PressureCycle;
+  BARO_CYCLE_READ_TEMP      = 0,  // At least 4.5msec to sample
+  BARO_CYCLE_READ_PRESSURE  = 3,  // At least 22.5msec to sample
+  BARO_CYCLE_NUM            = 4
+} BaroCycle;
 
 #if (CONTROL_LOOP_CYCLE_MSEC != 10)
-  #error The above definition of PressureCycle needs to be fixed
+  #error The above definition of BaroCycle needs to be fixed
 #endif
 
 
@@ -129,7 +129,7 @@ typedef enum
 //=============================================================================
 
 static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
-#if PRESSURE_EXAMPLE
+#if BARO_EXAMPLE
 // Initialize with the example data in the BMP085 data sheet
 
 = {408, -72, -14383, 32741, 32757, 23153, 6190, 4, -32768, -8711, 2868}
@@ -143,20 +143,20 @@ static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
 //
 //=============================================================================
 
-//=============================== pressue_init() ==============================
+//=============================== baro_init() =================================
 //
-// Initialize the pressure sensor module
+// Initialize the barometric sensor module
 // Should be called on system initalization
 
 boolean             // Ret: true if OK, false if failed
-pressure_init(void)
+baro_init(void)
 
 {
   uint8_t i;
   int16_t temp;
   
 
-#if (! PRESSURE_EXAMPLE)
+#if (! BARO_EXAMPLE)
   // Serial.print("BMP085 EEPROM\t");
   
   // Read the EEPROM calibration data
@@ -167,7 +167,7 @@ pressure_init(void)
   {
     temp = i2c_read_next_16();
     
-#if PRINT_PRESSURE
+#if PRINT_BARO
     Serial.print(temp, DEC);
     Serial.print('\t');
 #endif
@@ -182,7 +182,7 @@ pressure_init(void)
     bmp085_eeprom[i] = temp;
   };
   
-#if PRINT_PRESSURE
+#if PRINT_BARO
   Serial.println();
 #endif
 
@@ -190,24 +190,24 @@ pressure_init(void)
   
   i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_TEMPERATURE);
 
-#endif  // ! PRESSURE_EXAMPLE
+#endif  // ! BARO_EXAMPLE
 
   return true;
 };
 
 
-//=============================== pressue_update() ============================
+//=============================== baro_update() ===============================
 //
-// Update the pressure sensor readings from the h/w
+// Update the barometric sensor readings from the h/w
 
 void
-pressure_update(void)
+baro_update(void)
 
 {
   // Variable names and types are per the algorithm described in the BMP085
   // data sheet
   
-  static uint8_t pressure_cycle   = PRESSURE_CYCLE_READ_TEMP;
+  static uint8_t baro_cycle   = BARO_CYCLE_READ_TEMP;
   static int16_t b6;
   static int32_t altitude_avg_cm  = 0;
   static int32_t altitude_zero_cm = 0x80000000;
@@ -227,15 +227,15 @@ pressure_update(void)
   int32_t        x3;
 
   
-  //Serial.print(pressure_cycle, DEC);
+  //Serial.print(baro_cycle, DEC);
   //Serial.print('\t');
   
-  switch (pressure_cycle)
+  switch (baro_cycle)
   {
-    case PRESSURE_CYCLE_READ_TEMP:
+    case BARO_CYCLE_READ_TEMP:
       // Read uncompensated temperature value (16 bits)
       
-#if PRESSURE_EXAMPLE
+#if BARO_EXAMPLE
       ut = 27898;
 #else
       ut = i2c_read_16(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG);
@@ -253,7 +253,7 @@ pressure_update(void)
       b5 = x1s + x2s;
       b6 = b5 - 4000;   // Note b6 is static since it's used in a later invokation
       
-#if PRINT_PRESSURE
+#if PRINT_BARO
       temperature_01c = (b5 + 8) >> 4;
       Serial.print(temperature_01c, DEC);
       Serial.print('\t');
@@ -261,17 +261,17 @@ pressure_update(void)
       
       // Initiate uncompensated pressure value read
 
-#if (! PRESSURE_EXAMPLE)
+#if (! BARO_EXAMPLE)
       i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_PRESSURE_3);
 #endif
 
       break;
 
-    case PRESSURE_CYCLE_READ_PRESSURE:
+    case BARO_CYCLE_READ_PRESSURE:
 
       // Read uncompensated pressure value (19 bits)
       
-#if PRESSURE_EXAMPLE
+#if BARO_EXAMPLE
       up = 23843;
 #else
       up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG) >> (8 - BMP085_OSS);
@@ -326,7 +326,7 @@ pressure_update(void)
       //Serial.print('\t');
       pressure_pa += (x1 + x2 + 3791) >> 4;
       
-#if PRINT_PRESSURE
+#if PRINT_BARO
       Serial.print(pressure_pa, DEC);
       Serial.print('\t');
 
@@ -350,10 +350,10 @@ pressure_update(void)
       break;
   };
 
-  if (++pressure_cycle >= PRESSURE_CYCLE_NUM)
-    pressure_cycle = PRESSURE_CYCLE_READ_TEMP;
+  if (++baro_cycle >= BARO_CYCLE_NUM)
+    baro_cycle = BARO_CYCLE_READ_TEMP;
 }
 
 
-#endif // SUPPORT_PRESSURE
+#endif // SUPPORT_BARO
 

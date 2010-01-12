@@ -1,5 +1,5 @@
-#ifndef __PRESSURE_H__
-#define __PRESSURE_H__
+#ifndef __BARO_H__
+#define __BARO_H__
 
 //=============================================================================
 //
@@ -43,21 +43,21 @@
 //
 //=============================================================================
 
-//=============================== pressue_init() ==============================
+//=============================== baro_init() =================================
 //
-// Initialize the pressure sensor module
+// Initialize the barometric sensor module
 // Should be called on system initalization
 
 boolean             // Ret: true if OK, false if failed
-pressure_init(void);
+baro_init(void);
 
 
-//=============================== pressue_update() ============================
+//=============================== baro_update() ===============================
 //
-// Update the pressure sensor readings from the h/w
+// Update the barometric sensor readings from the h/w
 
 void
-pressure_update(void);
+baro_update(void);
 
 
 #endif
