@@ -183,6 +183,9 @@ void setup()
   int            eeprom_addr;
 
 
+  delay(500);  // 0.5 second delay before we start.  Seems that, e.g.,
+               // barometric pressure sensor takes some time to reset
+
   Serial.begin(115200);
 
   i2c_init();
@@ -408,6 +411,8 @@ void loop()
 #if PRINT_RECEIVER
   receiver_print_stats();
 #endif
+
+  // Check for "immediate stop" input
   
   if ((receiver_is_at_extreme(THROTTLE_CH) == -1) &&
       (receiver_is_at_extreme(YAW_CH)      ==  1) &&
@@ -707,9 +712,26 @@ void loop()
     }
     
     // Get the roll & pitch measurements from the accelerators
-    
-    accel_get_rotations(rot_measurement);
 
+    if (receiver_get_boolean(AUX1_CH))
+    {
+      // Test mode - ignore the accelerometer inputs
+
+      rot_measurement[ROLL ] = ROT_NONE;
+      rot_measurement[PITCH] = ROT_NONE;
+    }
+
+    else
+      accel_get_rotations(rot_measurement);
+
+    // Indicate whether we have legal measurements on both axes
+    
+    if ((rot_measurement[ROLL ] != ROT_NONE) &&
+        (rot_measurement[PITCH] != ROT_NONE))
+        indicators_set(IND_FLIGHT_WITH_ACCEL);
+    else
+        indicators_set(IND_FLIGHT_WITHOUT_ACCEL);
+    
     // Estimate the roll & pitch rotations based on measurements
     
     for (rot = ROLL; rot <= PITCH; rot++)
