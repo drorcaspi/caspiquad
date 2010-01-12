@@ -40,9 +40,11 @@
 
 // Indicator pattern headers
 
-#define PATTERN_PERMANENT    ((uint8_t)-3)   // Permanent repeated pattern
-#define PATTERN_REPEAT       ((uint8_t)-2)   // Repeated pattern
-#define PATTERN_ONCE         ((uint8_t)-1)   // One-time pattern
+#define PATTERN_PERMANENT    ((uint8_t)-5)   // Permanent repeated pattern
+#define PATTERN_REPEAT       ((uint8_t)-4)   // Repeated pattern
+#define PATTERN_ONCE         ((uint8_t)-3)   // One-time pattern
+#define PATTERN_ON           ((uint8_t)-2)   // Indicator on
+#define PATTERN_OFF          ((uint8_t)-1)   // Indicator off
 #define PATTERN_END          ((uint8_t) 0)
 
 //=============================================================================
@@ -97,11 +99,13 @@ public:
 //
 //=============================================================================
 
+static const uint8_t off_pattern[]             PROGMEM = {PATTERN_OFF};
+static const uint8_t on_pattern[]              PROGMEM = {PATTERN_OFF};
+
 //--------------
 // LED Patterns
 //--------------
 
-static const uint8_t none_led_pattern[]        PROGMEM = {PATTERN_END};
 static const uint8_t setup_led_pattern[]       PROGMEM = {
                                                            PATTERN_REPEAT,
                                                             7, 1,
@@ -227,9 +231,9 @@ static const uint8_t sw_err_led_pattern[]      PROGMEM = {
                                                            PATTERN_END
                                                          };
 
-static const prog_uint8_t *const p_led_patterns[] PROGMEM = 
+static const prog_uint8_t *const p_led_patterns[IND_NUM] PROGMEM = 
 {
-  none_led_pattern,
+  off_pattern,                    // IND_NONE
   setup_led_pattern,
   setup_next1_led_pattern,
   setup_next2_led_pattern,
@@ -241,7 +245,9 @@ static const prog_uint8_t *const p_led_patterns[] PROGMEM =
   rot_positive_led_pattern,       // IND_ROT_POSITIVE
   rot_positive_led_pattern,       // IND_ROT_NEGATIVE
   arming_led_pattern,
-  flight_led_pattern,
+  flight_led_pattern,             // IND_FLIGHT
+  on_pattern,                     // IND_FLIGHT_WITH_ACCEL
+  off_pattern,                    // IND_FLIGHT_WITHOUT_ACCEL
   bat_warn_led_pattern,
   bat_low_led_pattern,
   hw_err_led_pattern,             // IND_HW_ERR_ACCEL_INIT
@@ -254,8 +260,6 @@ static const prog_uint8_t *const p_led_patterns[] PROGMEM =
 // Buzzer Patterns
 //-----------------
 
-static const uint8_t none_buz_pattern[]        PROGMEM = {PATTERN_END};
-static const uint8_t setup_buz_pattern[]       PROGMEM = {PATTERN_END};
 static const uint8_t setup_next1_buz_pattern[] PROGMEM = {
                                                            PATTERN_ONCE,
                                                             1, 1,
@@ -338,7 +342,6 @@ static const uint8_t arming_buz_pattern[]      PROGMEM = {
                                                             1, 1,
                                                            PATTERN_END
                                                          };
-static const uint8_t flight_buz_pattern[]      PROGMEM = {PATTERN_END};
 static const uint8_t bat_warn_buz_pattern[]    PROGMEM = {
                                                            PATTERN_PERMANENT,
                                                             9, 1,
@@ -370,10 +373,10 @@ static const uint8_t sw_err_buz_pattern[]      PROGMEM = {
                                                            PATTERN_END
                                                          };
 
-static const prog_uint8_t *const p_buz_patterns[] PROGMEM =
+static const prog_uint8_t *const p_buz_patterns[IND_NUM] PROGMEM =
 {
-  none_buz_pattern,
-  setup_buz_pattern,
+  off_pattern,                    // IND_NONE
+  off_pattern,                    // IND_SETUP
   setup_next1_buz_pattern,
   setup_next2_buz_pattern,
   setup_next3_buz_pattern,
@@ -384,7 +387,9 @@ static const prog_uint8_t *const p_buz_patterns[] PROGMEM =
   rot_positive_buz_pattern,       // IND_ROT_POSITIVE
   rot_positive_buz_pattern,       // IND_ROT_NEGATIVE
   arming_buz_pattern,
-  flight_buz_pattern,
+  off_pattern,                    // IND_FLIGHT
+  off_pattern,                    // IND_FLIGHT_WITH_ACCEL
+  off_pattern,                    // IND_FLIGHT_WITHOUT_ACCEL
   bat_warn_buz_pattern,
   bat_low_buz_pattern,
   hw_err_buz_pattern,             // IND_HW_ERR_ACCEL_INIT
@@ -397,7 +402,7 @@ static const prog_uint8_t *const p_buz_patterns[] PROGMEM =
 // Indicator Objects
 //-------------------
 
-static Indicator led_indicator(LED_PIN, p_led_patterns);
+static Indicator led_indicator(LED_PIN,    p_led_patterns);
 static Indicator buz_indicator(BUZZER_PIN, p_buz_patterns);
 
 // Cycles counter
@@ -531,15 +536,26 @@ Indicator::set(IndicatorStatus status_in,   // In:  Status to indicate
       temp_status = IND_NONE;
     }
 
-    else if (pattern_mode == PATTERN_END)
+    else if (pattern_mode == PATTERN_OFF)
     {
-      // PATTERN_END at the start of the pattern means no status indication
+      // Status indication is constantly off
 
       status = status_in;
       pattern_counter = 0;
       cycle_counter = 0;
       
       digitalWrite(pin, 0);
+    }
+
+    else if (pattern_mode == PATTERN_ON)
+    {
+      // Status indication is constantly on
+
+      status = status_in;
+      pattern_counter = 0;
+      cycle_counter = 0;
+      
+      digitalWrite(pin, 1);
     }
 
     else
