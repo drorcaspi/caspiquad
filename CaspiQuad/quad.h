@@ -58,7 +58,7 @@
 #define SUPPORT_ACCEL                  1 // Usage of accelerometers
 #define SUPPORT_ACCEL_CALIBRATION      0 // Accelerometer calibration
 #define ESTIMATE_EARTH_ACCEL           0
-#define SUPPORT_PRESSURE               1 // Usage of barometric pressure sensor
+#define SUPPORT_BARO                   1 // Usage of barometric pressure sensor
 #define SUPPORT_TELEMENTRY             1
 
 
@@ -77,7 +77,7 @@
 #define PRINT_ACCEL               0
 #define PRINT_TRANSLATED_ACCEL    0
 #define PRINT_GYRO                0
-#define PRINT_PRESSURE            1
+#define PRINT_BARO                1
 #define PRINT_ROT_ERROR           0
 #define PRINT_ROT_ESTIMATE        0
 #define PRINT_ROT_CORRECTION      0

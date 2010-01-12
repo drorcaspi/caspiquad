@@ -8,7 +8,7 @@
 #include "motors.h"
 #include "gyro.h"
 #include "accel.h"
-#include "pressure.h"
+#include "baro.h"
 #include "receiver.h"
 #include "pid.h"
 #include "rotation_estimator.h"
@@ -199,9 +199,9 @@ void setup()
   if (! accel_init())
     indicators_set(IND_HW_ERR_ACCEL_INIT);
 #endif
-#if SUPPORT_PRESSURE
-  if (! pressure_init())
-    indicators_set(IND_HW_ERR_PRESSURE_INIT);
+#if SUPPORT_BARO
+  if (! baro_init())
+    indicators_set(IND_HW_ERR_BARO_INIT);
 #endif
 
   eeprom_addr = flight_control_read_eeprom();
@@ -387,8 +387,8 @@ void loop()
 #endif
 #endif
 
-#if SUPPORT_PRESSURE
-  pressure_update();
+#if SUPPORT_BARO
+  baro_update();
 #endif
 
   // Read gyros, center and scale
