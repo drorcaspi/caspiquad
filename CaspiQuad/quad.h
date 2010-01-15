@@ -77,7 +77,7 @@
 #define PRINT_ACCEL               0
 #define PRINT_TRANSLATED_ACCEL    0
 #define PRINT_GYRO                0
-#define PRINT_BARO                1
+#define PRINT_BARO                0
 #define PRINT_ROT_ERROR           0
 #define PRINT_ROT_ESTIMATE        0
 #define PRINT_ROT_CORRECTION      0

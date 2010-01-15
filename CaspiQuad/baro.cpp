@@ -121,6 +121,11 @@ typedef enum
   #error The above definition of BaroCycle needs to be fixed
 #endif
 
+// Averaging definitions
+
+#define BARO_PRESSURE_AVG_INIT   0x80000000
+#define BARO_PRESSURE_AVG_SHIFT  4
+
 
 //=============================================================================
 //
@@ -135,6 +140,9 @@ static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
 = {408, -72, -14383, 32741, 32757, 23153, 6190, 4, -32768, -8711, 2868}
 #endif
 ;
+
+static int32_t baro_pressure_avg   = BARO_PRESSURE_AVG_INIT;
+static int32_t baro_pressure_zero;
 
 
 //=============================================================================
@@ -209,9 +217,6 @@ baro_update(void)
   
   static uint8_t baro_cycle   = BARO_CYCLE_READ_TEMP;
   static int16_t b6;
-  static int32_t altitude_avg_cm  = 0;
-  static int32_t altitude_zero_cm = 0x80000000;
-  int32_t        altitude_cm;
   int16_t        temperature_01c;
   int32_t        pressure_pa;
   uint16_t       ut;
@@ -276,8 +281,8 @@ baro_update(void)
 #else
       up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG) >> (8 - BMP085_OSS);
 
-      Serial.print(up, DEC);
-      Serial.print('\t');
+      //Serial.print(up, DEC);
+      //Serial.print('\t');
 
       // Initiate next temperature reading
       
@@ -304,11 +309,11 @@ baro_update(void)
       //Serial.print(x3, DEC);
       //Serial.print('\t');
       b4 = ((uint16_t)(bmp085_eeprom[BMP085_AC4]) * (uint32_t)(x3 + 32768)) >> 15;
-      Serial.print(b4, DEC);
-      Serial.print('\t');
+      //Serial.print(b4, DEC);
+      //Serial.print('\t');
       b7 = (up - (uint32_t)b3) * (50000 >> BMP085_OSS);
-      Serial.print(b7, HEX);
-      Serial.print('\t');
+      //Serial.print(b7, HEX);
+      //Serial.print('\t');
       if (b7 < (uint32_t)0x80000000)
         pressure_pa = (b7 << 1) / b4;
       else
@@ -329,19 +334,23 @@ baro_update(void)
 #if PRINT_BARO
       Serial.print(pressure_pa, DEC);
       Serial.print('\t');
+#endif
 
-      altitude_cm = (1079 * (100000 - pressure_pa)) >> 7;  // Multiply by 8.43
-      
-      if (altitude_zero_cm == 0x80000000)
-         altitude_zero_cm = altitude_cm;
+      // Do a simple IIR averaging
+
+      if (baro_pressure_avg == BARO_PRESSURE_AVG_INIT)
+      {
+         baro_pressure_avg = pressure_pa << BARO_PRESSURE_AVG_SHIFT;
+      }
          
       else
       {
-        altitude_cm -= altitude_zero_cm;
-        altitude_avg_cm -= (altitude_avg_cm >> 4);
-        altitude_avg_cm += altitude_cm;
+        baro_pressure_avg -= (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT);
+        baro_pressure_avg += pressure_pa;
       }
-      Serial.println((altitude_avg_cm >> 4), DEC);
+      
+#if PRINT_BARO
+      Serial.println((baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT), DEC);
 #endif
       
       break;
@@ -354,6 +363,41 @@ baro_update(void)
     baro_cycle = BARO_CYCLE_READ_TEMP;
 }
 
+
+//========================= baro_alt_estimate_zero() ==========================
+//
+// Zero the barometric sensor altitude estimate to the current average
+
+void
+baro_alt_estimate_zero(void)
+
+{
+  baro_pressure_zero = baro_pressure_avg;
+}
+
+
+//========================= baro_alt_estimate_get() ===========================
+//
+// Get the barometric sensor altitude estimate
+
+int16_t
+baro_alt_estimate_get(void)
+
+{
+  int16_t        altitude_cm;
+  
+  
+  // Calculate the altitude in CM, as pressure difference * 8.43
+  
+  altitude_cm = (-1079 * (baro_pressure_zero - baro_pressure_avg)) >>
+                                                 (7 + BARO_PRESSURE_AVG_SHIFT);
+
+#if PRINT_BARO
+  Serial.println(altitude_cm, DEC);
+#endif
+
+  return altitude_cm;
+}
 
 #endif // SUPPORT_BARO
 

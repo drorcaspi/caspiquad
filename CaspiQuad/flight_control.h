@@ -63,7 +63,7 @@ extern RotationEstimator       rot_estimator[2];
 extern RotationManualEstimator yaw_estimator;
 
 extern PID                     rot_rate_pid[NUM_ROTATIONS];
-extern PID                     rot_pid[NUM_ROTATIONS];
+extern PID                     alt_pid;
 
 extern float                   receiver_rot_rate_gain;  // (rad/sec)
 extern uint8_t                 receiver_rot_gain;

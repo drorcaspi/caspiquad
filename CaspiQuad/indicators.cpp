@@ -100,7 +100,7 @@ public:
 //=============================================================================
 
 static const uint8_t off_pattern[]             PROGMEM = {PATTERN_OFF};
-static const uint8_t on_pattern[]              PROGMEM = {PATTERN_OFF};
+static const uint8_t on_pattern[]              PROGMEM = {PATTERN_ON};
 
 //--------------
 // LED Patterns

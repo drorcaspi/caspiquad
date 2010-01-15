@@ -60,4 +60,19 @@ void
 baro_update(void);
 
 
+//========================= baro_alt_estimate_zero() ==========================
+//
+// Zero the barometric sensor altitude estimate to the current average
+
+void
+baro_alt_estimate_zero(void);
+
+
+//========================= baro_alt_estimate_get() ===========================
+//
+// Get the barometric sensor altitude estimate
+
+int16_t
+baro_alt_estimate_get(void);
+
 #endif

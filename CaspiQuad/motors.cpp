@@ -138,18 +138,14 @@ motors_command(
     if (rotation_rate_max > ((int16_t)MOTOR_THROTTLE_MAX - throttle))
       rotation_rate_max = (int16_t)MOTOR_THROTTLE_MAX - throttle;
       
-    // Limit roll & pitch to 75% of available throttle range
+    // Limit rotation rate controls to 37.5% of available throttle range
     
     rotation_rate_max -= (rotation_rate_max >> 2);
-    
-    roll_rate  = constrain(roll_rate, -rotation_rate_max, rotation_rate_max);
-    pitch_rate = constrain(pitch_rate, -rotation_rate_max, rotation_rate_max);
-    
-    // Limit yaw to 37.5% of the available throttle range
-    
     rotation_rate_max >>= 1;
     
-    yaw_rate   = constrain(yaw_rate, -rotation_rate_max, rotation_rate_max);
+    roll_rate  = constrain(roll_rate,  -rotation_rate_max, rotation_rate_max);
+    pitch_rate = constrain(pitch_rate, -rotation_rate_max, rotation_rate_max);
+    yaw_rate   = constrain(yaw_rate,   -rotation_rate_max, rotation_rate_max);
       
     // Calculate Motor Commands:
     // ------------------------
