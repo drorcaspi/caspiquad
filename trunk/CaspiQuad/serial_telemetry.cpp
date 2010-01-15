@@ -302,15 +302,15 @@ handle_serial_telemetry(void)
         case 'E':
           // Receive roll and pitch rotation (auto level) PID settings
           
-          rot_pid[ROLL].set_p(params[0]);
-          rot_pid[ROLL].set_i(params[1]);
-          rot_pid[ROLL].set_d(params[2]);
-          rot_pid[ROLL].reset();
+          alt_pid.set_p(params[0]);
+          alt_pid.set_i(params[1]);
+          alt_pid.set_d(params[2]);
+          alt_pid.reset();
           
-          rot_pid[PITCH].set_p(params[3]);
-          rot_pid[PITCH].set_i(params[4]);
-          rot_pid[PITCH].set_d(params[5]);
-          rot_pid[PITCH].reset();
+          //TBD_pid[PITCH].set_p(params[3]);
+          //TBD_pid[PITCH].set_i(params[4]);
+          //TBD_pid[PITCH].set_d(params[5]);
+          //TBD_pid[PITCH].reset();
 
           command_reset();
           
@@ -339,10 +339,7 @@ handle_serial_telemetry(void)
             rot_rate_pid[rot].set_windup_guard(windup_guard);
           };
           
-          for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-          {
-            rot_pid[rot].set_windup_guard(windup_guard);
-          };
+          alt_pid.set_windup_guard(windup_guard);
           
           receiver_rot_rate_gain = params[1] /
                                    RECEIVER_ROT_RATE_GAIN_DISPLAY_FACTOR;  // xmitFactor
@@ -373,8 +370,8 @@ handle_serial_telemetry(void)
           for (uint8_t rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
           {
             rot_rate_pid[rot].write_eeprom();
-            rot_pid[rot].write_eeprom();
           };
+          alt_pid.write_eeprom();
 
           eeprom_write_ver();
 
@@ -417,17 +414,17 @@ handle_serial_telemetry(void)
         case 'F':
           // Send roll and pitch rotation (auto level) PID settings
           
-          Serial.print(rot_pid[ROLL].get_p());
+          Serial.print(alt_pid.get_p());
           print_comma();
-          Serial.print(rot_pid[ROLL].get_i());
+          Serial.print(alt_pid.get_i());
           print_comma();
-          Serial.print(rot_pid[ROLL].get_d());
+          Serial.print(alt_pid.get_d());
           print_comma();
-          Serial.print(rot_pid[PITCH].get_p());
+          Serial.print(0.99);
           print_comma();
-          Serial.print(rot_pid[PITCH].get_i());
+          Serial.print(0.99);
           print_comma();
-          Serial.println(rot_pid[PITCH].get_d());
+          Serial.println(0.99);
 
           command_reset();
           

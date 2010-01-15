@@ -59,6 +59,17 @@ typedef enum
 
 #define RECEIVER_YAW_ZERO_MAX    32
 
+// Thresholds for initiating altitude hold mode
+
+#define ALT_HOLD_MOTOR_THROTTLE_MAX    850
+#define ALT_HOLD_MOTOR_THROTTLE_MIN    600
+
+// Range of throttle automatic control in altitude hold mode
+// (from center to edge in either direction)
+
+#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX   300
+#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN  -100
+
 
 //=============================================================================
 //
@@ -86,7 +97,7 @@ RotationEstimator  rot_estimator[2];
 RotationManualEstimator       yaw_estimator;
 
 PID                rot_rate_pid[NUM_ROTATIONS];
-PID                rot_pid[NUM_ROTATIONS];
+PID                alt_pid;
  
 float              receiver_rot_rate_gain = 0.003;  // (rad/sec)
                     // Multiplies the receiver rotation command (cenetered)
@@ -239,17 +250,12 @@ void setup()
                                                  0.003,// I
                                                  0,    // D
                                                  0);   // windup_guard - NOT USED
-
-  // TODO: rot_pid is not used, remove it!
-  
-  for (rot = FIRST_ROTATION; rot < NUM_ROTATIONS; rot++)
-  {
-    eeprom_addr = rot_pid[rot].read_eeprom(eeprom_addr,
-                                           0,   // P
-                                           0,   // I
-                                           0,   // D
-                                           0);  // windup_guard (rad/sec)
-  };
+ 
+  eeprom_addr = alt_pid.read_eeprom(eeprom_addr,
+                                    0,   // P
+                                    0,   // I
+                                    0,   // D
+                                    0);  // windup_guard (rad/sec)
 
   delay(1000);  // 1 second delay before we start.  Allows things such as
                 // battery monitor, various filters to stabilize.
@@ -273,7 +279,13 @@ void loop()
   
   static BatStatus   bat_status                  = BAT_OK;
                           // Battery status
- 
+
+  static boolean     was_alt_hold                = false;
+                          // Indicates if we had altitude hold in the last cycle
+  static int16_t     alt_hold_motor_throttle_command = 0;
+                          // Throttle command for altitude hold.  Set on
+                          // initiation of altitude hold mode.
+                          
   // Local Variables
   
   uint8_t            current_msec;
@@ -302,6 +314,10 @@ void loop()
                           // Temporarily holds the motor rotation command before
                           // converting to int16_t
   uint8_t            rot; // Rotation index
+  boolean            is_alt_hold;
+                          // Indicates altitude hold for the current cycle
+  float              motor_alt_command;
+                          // Output of altitude hold PID
   BatStatus          new_bat_status;
                           // New battery status, as read
   
@@ -725,13 +741,13 @@ void loop()
       accel_get_rotations(rot_measurement);
 
     // Indicate whether we have legal measurements on both axes
-    
+
     if ((rot_measurement[ROLL ] != ROT_NONE) &&
         (rot_measurement[PITCH] != ROT_NONE))
-        indicators_set(IND_FLIGHT_WITH_ACCEL);
+      indicators_set(IND_FLIGHT_WITH_ACCEL);
     else
-        indicators_set(IND_FLIGHT_WITHOUT_ACCEL);
-    
+      indicators_set(IND_FLIGHT_WITHOUT_ACCEL);
+
     // Estimate the roll & pitch rotations based on measurements
     
     for (rot = ROLL; rot <= PITCH; rot++)
@@ -796,7 +812,7 @@ void loop()
       rot_error = -rot_estimate[rot];
       rot_rate_error = -gyro[rot].get_rad_per_sec();
       
-      if ((rot != YAW) && (! receiver_get_boolean(GEAR_CH)))
+      if ((rot != YAW) /* && (! receiver_get_boolean(GEAR_CH)) */ )
         receiver_controls_rot = true;
       else
         receiver_controls_rot = false;
@@ -879,8 +895,49 @@ void loop()
 #if PRINT_MOTOR_ROT_COMMAND || PRINT_ROT_ERROR
     Serial.println();
 #endif
-    
+
     motor_throttle_command = receiver_throttle.get_throttle();
+
+#if SUPPORT_BARO
+    // Altitude control using barometer input
+    // --------------------------------------
+
+    is_alt_hold = receiver_get_boolean(GEAR_CH);
+    
+    if ((is_alt_hold) && (! was_alt_hold))
+    {
+      // The altitude hold has just been togggled to ON
+
+      if ((motor_throttle_command >= (int16_t)ALT_HOLD_MOTOR_THROTTLE_MIN) &&
+          (motor_throttle_command <= (int16_t)ALT_HOLD_MOTOR_THROTTLE_MAX))
+      {
+        // Throttle is within limit for start of altitude hold
+
+        alt_hold_motor_throttle_command = motor_throttle_command;
+        baro_alt_estimate_zero();
+      }
+
+      else
+        is_alt_hold = false;
+    }
+
+    if (is_alt_hold)
+    {
+      // Do the PID for the altitude
+
+      motor_alt_command = alt_pid.update_pd_i(0, baro_alt_estimate_get());
+      
+      // Constrain the altitude command to the minimum and maximum legal
+      // values and add to the stored initial throttle command
+
+      motor_throttle_command = alt_hold_motor_throttle_command +
+                               (int16_t)constrain(motor_alt_command,
+                                                  (float)ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN,
+                                                  (float)ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX);
+    }
+      
+    was_alt_hold = is_alt_hold;
+#endif
 
     motors_command(motor_throttle_command,
                    motor_rot_command[PITCH],
