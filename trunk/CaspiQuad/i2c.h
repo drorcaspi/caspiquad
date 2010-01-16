@@ -77,8 +77,8 @@ i2c_start_read(uint8_t device_addr,
 // Read next 8 bits
 //
 
-uint8_t
-i2c_read_next_8(void);
+uint8_t                              // Ret: value read from I2C
+i2c_read_next_8(boolean *p_status);  // Out: is OK?
 
 
 //=========================== i2c_read_next_16() ==============================
@@ -86,8 +86,8 @@ i2c_read_next_8(void);
 // Read next 16 bits
 //
 
-uint16_t
-i2c_read_next_16(void);
+uint16_t                              // Ret: value read from I2C
+i2c_read_next_16(boolean *p_status);  // Out: is OK?
 
 
 //================================== i2c_read_8() =============================
@@ -95,9 +95,10 @@ i2c_read_next_16(void);
 // Read 8 bits
 //
 
-uint8_t
-i2c_read_8(uint8_t device_addr,
-           uint8_t register_addr);
+uint8_t                            // Ret: value read from I2C
+i2c_read_8(uint8_t device_addr,    // In:  device address
+           uint8_t register_addr,  // In:  register address
+           boolean *p_status);     // Out: is OK?
 
 
 //================================== i2c_read_16() ============================
@@ -105,8 +106,10 @@ i2c_read_8(uint8_t device_addr,
 // Read 16 bits
 //
 
-uint16_t i2c_read_16(uint8_t device_addr,
-                     uint8_t register_addr);
+uint16_t                            // Ret: value read from I2C
+i2c_read_16(uint8_t device_addr,    // In:  device address
+            uint8_t register_addr,  // In:  register address
+            boolean *p_status);     // Out: is OK?
 
 
 //================================== i2c_read_24() ============================
@@ -114,7 +117,9 @@ uint16_t i2c_read_16(uint8_t device_addr,
 // Read 24 bits
 //
 
-uint32_t i2c_read_24(uint8_t device_addr,
-                     uint8_t register_addr);
+uint32_t                            // Ret: value read from I2C
+i2c_read_24(uint8_t device_addr,    // In:  device address
+            uint8_t register_addr,  // In:  register address
+            boolean *p_status);     // Out: is OK?
 
 #endif

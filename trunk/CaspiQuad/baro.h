@@ -56,7 +56,7 @@ baro_init(void);
 //
 // Update the barometric sensor readings from the h/w
 
-void
+boolean             // Ret: true if OK, false if failed
 baro_update(void);
 
 

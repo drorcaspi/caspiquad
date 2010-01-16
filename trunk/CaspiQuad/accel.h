@@ -68,7 +68,7 @@ accel_init(void);
 //
 // Update the accelerometers readings from the h/w
 
-void
+boolean             // Ret: true if OK, false if failed
 accel_update(void);
 
 

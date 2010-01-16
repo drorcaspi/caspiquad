@@ -162,6 +162,7 @@ baro_init(void)
 {
   uint8_t i;
   int16_t temp;
+  boolean status;
   
 
 #if (! BARO_EXAMPLE)
@@ -173,7 +174,9 @@ baro_init(void)
 
   for (i = 0; i < BMP085_EEPROM_NUM; i++)
   {
-    temp = i2c_read_next_16();
+    temp = i2c_read_next_16(&status);
+    if (! status)
+      return false;
     
 #if PRINT_BARO
     Serial.print(temp, DEC);
@@ -208,7 +211,7 @@ baro_init(void)
 //
 // Update the barometric sensor readings from the h/w
 
-void
+boolean             // Ret: true if OK, false if failed
 baro_update(void)
 
 {
@@ -230,6 +233,7 @@ baro_update(void)
   int32_t        x1;
   int32_t        x2;
   int32_t        x3;
+  boolean        status;
 
   
   //Serial.print(baro_cycle, DEC);
@@ -243,7 +247,9 @@ baro_update(void)
 #if BARO_EXAMPLE
       ut = 27898;
 #else
-      ut = i2c_read_16(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG);
+      ut = i2c_read_16(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG, &status);
+      if (! status)
+        return false;
 #endif
 
       // Calculate true temperature
@@ -279,7 +285,11 @@ baro_update(void)
 #if BARO_EXAMPLE
       up = 23843;
 #else
-      up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG) >> (8 - BMP085_OSS);
+      up = i2c_read_24(BMP085_ADDRESS, BMP085_SENSOR_MSB_REG, &status);
+      if (! status)
+        return false;
+      
+      up >>= (8 - BMP085_OSS);
 
       //Serial.print(up, DEC);
       //Serial.print('\t');
@@ -361,6 +371,8 @@ baro_update(void)
 
   if (++baro_cycle >= BARO_CYCLE_NUM)
     baro_cycle = BARO_CYCLE_READ_TEMP;
+
+  return true;
 }
 
 
