@@ -536,28 +536,6 @@ Indicator::set(IndicatorStatus status_in,   // In:  Status to indicate
       temp_status = IND_NONE;
     }
 
-    else if (pattern_mode == PATTERN_OFF)
-    {
-      // Status indication is constantly off
-
-      status = status_in;
-      pattern_counter = 0;
-      cycle_counter = 0;
-      
-      digitalWrite(pin, 0);
-    }
-
-    else if (pattern_mode == PATTERN_ON)
-    {
-      // Status indication is constantly on
-
-      status = status_in;
-      pattern_counter = 0;
-      cycle_counter = 0;
-      
-      digitalWrite(pin, 1);
-    }
-
     else
     {
       is_new = false;
@@ -583,7 +561,7 @@ Indicator::set(IndicatorStatus status_in,   // In:  Status to indicate
       {
         // The new status is not temporary
         
-        if ((temp_status != IND_NONE) && (status != status_in))
+        if ((temp_status == IND_NONE) && (status != status_in))
         {
           // A new status is displayed from the beginning only if it is
           // different than the current status, and there's no ongoing temp
@@ -597,24 +575,52 @@ Indicator::set(IndicatorStatus status_in,   // In:  Status to indicate
 
       if (is_new || is_force)
       {
-        // Set the beginning of a new pattern (either temporary or not)
-        // The actual pattern starts at entry #1
+        if (pattern_mode == PATTERN_OFF)
+        {
+          // Status indication is constantly off
         
-        pattern_counter = 1;
-        cycle_counter = pgm_read_byte(&p_pattern[1]);
+          pattern_counter = 0;
+          cycle_counter = 0;
+          
+          digitalWrite(pin, 0);
+        }
+        
+        else if (pattern_mode == PATTERN_ON)
+        {
+          // Status indication is constantly on
+        
+          pattern_counter = 0;
+          cycle_counter = 0;
+          
+          digitalWrite(pin, 1);
+        }
 
-        digitalWrite(pin, 0);
+        else
+        {
+          // Set the beginning of a new pattern (either temporary or not)
+          // The actual pattern starts at entry #1
+          
+          pattern_counter = 1;
+          cycle_counter = pgm_read_byte(&p_pattern[1]);
+
+          digitalWrite(pin, 0);
+        }
       }
     }
   }
+  
 #if PRINT_INDICATORS
   Serial.print(pin, DEC);
   Serial.print("\t");
-  Serial.print(pgm_read_byte(&p_pattern[0]), DEC);
+  Serial.print(pattern_mode, DEC);
+  Serial.print("\t");
+  Serial.print(status_in, DEC);
   Serial.print("\t");
   Serial.print(status, DEC);
   Serial.print("\t");
   Serial.print(temp_status, DEC);
+  Serial.print("\t");
+  Serial.print(pattern_counter, DEC);
   Serial.print("\t");
   Serial.println(cycle_counter, DEC);
 #endif
