@@ -124,7 +124,7 @@ typedef enum
 // Averaging definitions
 
 #define BARO_PRESSURE_AVG_INIT   0x80000000
-#define BARO_PRESSURE_AVG_SHIFT  4
+#define BARO_PRESSURE_AVG_SHIFT  3
 
 
 //=============================================================================
