@@ -86,6 +86,11 @@ uint8_t            last_msec      = 0;
 uint16_t           avg_cycle_msec = 0;
 uint8_t            max_cycle_msec = 0;
 
+// Hardware Status Variables
+
+boolean            accel_ok       = false;
+boolean            baro_ok        = false;
+
 // Flight Control Variables
 
 FlightState        flight_state   = FLIGHT_SETUP;
@@ -207,11 +212,13 @@ void setup()
   eeprom_init();
   motors_init();
 #if SUPPORT_ACCEL
-  if (! accel_init())
+  accel_ok = accel_init();
+  if (! accel_ok)
     indicators_set(IND_HW_ERR_ACCEL_INIT);
 #endif
 #if SUPPORT_BARO
-  if (! baro_init())
+  baro_ok = baro_init();
+  if (! baro_ok)
     indicators_set(IND_HW_ERR_BARO_INIT);
 #endif
 
@@ -396,7 +403,9 @@ void loop()
 #if SUPPORT_ACCEL
   // Read the accelerometers
   
-  accel_update();
+  accel_ok = accel_update();
+  if (! accel_ok)
+    indicators_set(IND_HW_ERR_ACCEL_INIT);
   
 #if PRINT_ACCEL
   accel_print_stats();
@@ -404,7 +413,9 @@ void loop()
 #endif
 
 #if SUPPORT_BARO
-  baro_update();
+  baro_ok = baro_update();
+  if (! baro_ok)
+    indicators_set(IND_HW_ERR_BARO_INIT);
 #endif
 
   // Read gyros, center and scale
@@ -729,9 +740,9 @@ void loop()
     
     // Get the roll & pitch measurements from the accelerators
 
-    if (receiver_get_boolean(AUX1_CH))
+    if ((! accel_ok) || receiver_get_boolean(AUX1_CH))
     {
-      // Test mode - ignore the accelerometer inputs
+      // Accelerometers failure or test mode - ignore the accelerometer inputs
 
       rot_measurement[ROLL ] = ROT_NONE;
       rot_measurement[PITCH] = ROT_NONE;
@@ -902,7 +913,7 @@ void loop()
     // Altitude control using barometer input
     // --------------------------------------
 
-    is_alt_hold = receiver_get_boolean(GEAR_CH);
+    is_alt_hold = baro_ok && receiver_get_boolean(GEAR_CH);
     
     if ((is_alt_hold) && (! was_alt_hold))
     {

@@ -33,7 +33,7 @@
 //
 //=============================================================================
 
-//
+#define I2C_MAX_READ_LOOP 1000   // Set the maximum time to wait on I2C read
 
 
 //=============================================================================
@@ -114,12 +114,32 @@ i2c_start_read(uint8_t device_addr,
 // Read next 8 bits
 //
 
-uint8_t
-i2c_read_next_8(void)
+uint8_t                              // Ret: value read from I2C
+i2c_read_next_8(boolean *p_status)   // Out: is OK?
 
 {
-  while (Wire.available() == 0);
-  return Wire.receive();
+  int16_t i;
+  uint8_t value;
+
+
+  for (i = I2C_MAX_READ_LOOP; (Wire.available() == 0) && (i > 0); i--)
+  {
+    // Do nothing, wait for available data
+  }
+
+  if (i > 0)
+  {
+    *p_status = true;
+    value = Wire.receive();
+  }
+
+  else
+  {
+    *p_status = false;
+    value = 0;
+  }
+  
+  return value;
 }
 
 
@@ -128,15 +148,16 @@ i2c_read_next_8(void)
 // Read next 16 bits
 //
 
-uint16_t
-i2c_read_next_16(void)
+uint16_t                              // Ret: value read from I2C
+i2c_read_next_16(boolean *p_status)   // Out: is OK?
 
 {
   uint16_t value;
 
 
-  value = (uint16_t)i2c_read_next_8() << 8;
-  value += i2c_read_next_8();
+  value = (uint16_t)i2c_read_next_8(p_status) << 8;
+  if (*p_status)
+    value += i2c_read_next_8(p_status);
   
   return value; 
 }
@@ -147,13 +168,14 @@ i2c_read_next_16(void)
 // Read 8 bits
 //
 
-uint8_t
-i2c_read_8(uint8_t device_addr,
-           uint8_t register_addr)
+uint8_t                            // Ret: value read from I2C
+i2c_read_8(uint8_t device_addr,    // In:  device address
+           uint8_t register_addr,  // In:  register address
+           boolean *p_status)      // Out: is OK?
 
 {
   i2c_start_read(device_addr, register_addr, 1);
-  return i2c_read_next_8();
+  return i2c_read_next_8(p_status);
 }
 
 
@@ -162,12 +184,14 @@ i2c_read_8(uint8_t device_addr,
 // Read 16 bits
 //
 
-uint16_t i2c_read_16(uint8_t device_addr,
-                     uint8_t register_addr)
+uint16_t                            // Ret: value read from I2C
+i2c_read_16(uint8_t device_addr,    // In:  device address
+            uint8_t register_addr,  // In:  register address
+            boolean *p_status)      // Out: is OK?
 
 {
   i2c_start_read(device_addr, register_addr, 2);
-  return i2c_read_next_16();
+  return i2c_read_next_16(p_status);
 }
 
 
@@ -176,17 +200,21 @@ uint16_t i2c_read_16(uint8_t device_addr,
 // Read 24 bits
 //
 
-uint32_t i2c_read_24(uint8_t device_addr,
-                     uint8_t register_addr)
+uint32_t                            // Ret: value read from I2C
+i2c_read_24(uint8_t device_addr,    // In:  device address
+            uint8_t register_addr,  // In:  register address
+            boolean *p_status)      // Out: is OK?
 
 {
   uint32_t value;
 
   
   i2c_start_read(device_addr, register_addr, 3);
-  value = (uint32_t)i2c_read_next_8() << 16;
-  value += (uint16_t)i2c_read_next_8() << 8;
-  value += i2c_read_next_8();
+  value = (uint32_t)i2c_read_next_8(p_status) << 16;
+  if (*p_status)
+    value += (uint16_t)i2c_read_next_8(p_status) << 8;
+  if (*p_status)
+    value += i2c_read_next_8(p_status);
 
   return value; 
 }

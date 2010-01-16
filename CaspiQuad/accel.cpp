@@ -115,6 +115,7 @@ boolean             // Ret: true if OK, false if failed
 accel_init(void)
 {
   uint8_t who_am_i_val;
+  boolean status;
   
 
   current_accel_data[X_AXIS] = 0;
@@ -123,7 +124,10 @@ accel_init(void)
       
   // Read the WHO_AM_I register to make sure it's there
 
-  who_am_i_val = i2c_read_8(LIS302DL_0_ADDRESS, LIS302DL_WHO_AM_I);
+  who_am_i_val = i2c_read_8(LIS302DL_0_ADDRESS, LIS302DL_WHO_AM_I, &status);
+  if (! status)
+    return false;
+  
   if (who_am_i_val != (uint8_t)LIS302DL_WHO_AM_I_VALUE)
   {
 #if PRINT_ACCEL
@@ -147,16 +151,26 @@ accel_init(void)
 //
 // Update the accelerometers readings from the h/w
 
-void
+boolean             // Ret: true if OK, false if failed
 accel_update(void)
 
 {
+  boolean status;
+
+  
   current_accel_data[X_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
-                                                  LIS302DL_OUT_X);
-  current_accel_data[Y_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
-                                                  LIS302DL_OUT_Y);
-  current_accel_data[Z_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
-                                                  LIS302DL_OUT_Z);
+                                                  LIS302DL_OUT_X,
+                                                  &status);
+  if (status)
+    current_accel_data[Y_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                    LIS302DL_OUT_Y,
+                                                    &status);
+  if (status)
+    current_accel_data[Z_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                    LIS302DL_OUT_Z,
+                                                    &status);
+
+  return status;
 }
 
 
