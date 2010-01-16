@@ -38,6 +38,7 @@
 #include "i2c.h"
 #include <avr/pgmspace.h>
 #include "atan.h"
+#include "axis_translation.h"
 #include "accel.h"
 
 
@@ -68,6 +69,15 @@
 
 //-----------------------------------------------------------------------------
 //
+// Accelerometer Low-Pass Filtering Definitions
+//
+//-----------------------------------------------------------------------------
+
+#define ACCEL_SHIFT             3
+
+
+//-----------------------------------------------------------------------------
+//
 // Rotation Measurement Definitions
 //
 //-----------------------------------------------------------------------------
@@ -83,6 +93,17 @@
 #define ACCEL_ROTATION_MEASURE_SQ_MIN  ((ACCEL_MIN_1G * 0.9) * (ACCEL_MIN_1G * 0.9))
 
 
+//-----------------------------------------------------------------------------
+//
+// Earth-Axis Translation Definitions
+//
+//-----------------------------------------------------------------------------
+
+// Shift factor between accelerometer units  and estimated acceleration
+
+#define ACCEL_TRANSLATION_SHIFT  6
+
+
 //=============================================================================
 //
 // Static Variables
@@ -91,7 +112,7 @@
 
 // Current accelerometer readings (raw)
 
-static int8_t current_accel_data[NUM_AXES];
+static int16_t current_accel_data[NUM_AXES];
 
 #if SUPPORT_ACCEL_CALIBRATION
 // Accelerometer readings on a flat surface.  Should be calibrated to acheive
@@ -104,6 +125,14 @@ static int8_t flat_accel_data[NUM_AXES] = {0, 0, ACCEL_TYP_1G};
 
 static int16_t accel_long_avg[NUM_AXES];
 #endif
+
+//=============================================================================
+//
+// Static Variables
+//
+//=============================================================================
+
+static int16_t accel_ez_1g;   // Earth-axis Z acceleration @ 1G (static)
 
 
 //=============================== accel_init() ================================
@@ -120,7 +149,7 @@ accel_init(void)
 
   current_accel_data[X_AXIS] = 0;
   current_accel_data[Y_AXIS] = 0;
-  current_accel_data[Z_AXIS] = (int8_t)ACCEL_TYP_1G;
+  current_accel_data[Z_AXIS] = (int16_t)ACCEL_TYP_1G;
       
   // Read the WHO_AM_I register to make sure it's there
 
@@ -157,18 +186,27 @@ accel_update(void)
 {
   boolean status;
 
+
+  current_accel_data[X_AXIS] -= current_accel_data[X_AXIS] >> ACCEL_SHIFT;
+  current_accel_data[X_AXIS] += (int16_t)(int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                            LIS302DL_OUT_X,
+                                                            &status);
   
-  current_accel_data[X_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
-                                                  LIS302DL_OUT_X,
-                                                  &status);
   if (status)
-    current_accel_data[Y_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
-                                                    LIS302DL_OUT_Y,
-                                                    &status);
+  {
+    current_accel_data[Y_AXIS] -= current_accel_data[Y_AXIS] >> ACCEL_SHIFT;
+    current_accel_data[Y_AXIS] += (int16_t)(int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                              LIS302DL_OUT_Y,
+                                                              &status);
+  }
+  
   if (status)
-    current_accel_data[Z_AXIS] = (int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
-                                                    LIS302DL_OUT_Z,
-                                                    &status);
+  {
+    current_accel_data[Z_AXIS] -= current_accel_data[Z_AXIS] >> ACCEL_SHIFT;
+    current_accel_data[Z_AXIS] += (int16_t)(int8_t)i2c_read_8(LIS302DL_0_ADDRESS,
+                                                              LIS302DL_OUT_Z,
+                                                              &status);
+  }
 
   return status;
 }
@@ -195,7 +233,7 @@ accel_get_rotations(
   // Use the Z axis accelerometer reading as-is, do not subtract flat-surface
   // reading since we use earth gravity here
   
-  atan_row = current_accel_data[Z_AXIS];
+  atan_row = current_accel_data[Z_AXIS] >> ACCEL_SHIFT;
 
   if ((atan_row >= (int8_t)ATAN_ROW_MIN) &&
       (atan_row <= (int8_t)ATAN_ROW_MAX))
@@ -205,7 +243,7 @@ accel_get_rotations(
     // Find roll angle based on atan2(Z, Y)
     // Correct the Y accelerometer reading based on flat surface reading.
 
-    atan_col = current_accel_data[Y_AXIS];
+    atan_col = current_accel_data[Y_AXIS] >> ACCEL_SHIFT;
 #if SUPPORT_ACCEL_CALIBRATION
     atan_col -= flat_accel_data[Y_AXIS];
 #endif
@@ -230,7 +268,7 @@ accel_get_rotations(
     // Find pitch angle based on atan2(Z, X)
     // Correct the X accelerometer reading based on flat surface reading.
     
-    atan_col = current_accel_data[X_AXIS];
+    atan_col = current_accel_data[X_AXIS] >> ACCEL_SHIFT;
 #if SUPPORT_ACCEL_CALIBRATION
     atan_col -= flat_accel_data[X_AXIS];
 #endif
@@ -258,6 +296,149 @@ accel_get_rotations(
 }
 
 
+//============================ accel_zero_earth_z() ===========================
+//
+// Measure the earth 1G at rest
+
+void
+accel_zero_earth_z(void)
+
+{
+  accel_ez_1g = sqrt(((int32_t)current_accel_data[X_AXIS] * (int32_t)current_accel_data[X_AXIS]) +
+                     ((int32_t)current_accel_data[Y_AXIS] * (int32_t)current_accel_data[Y_AXIS]) +
+                     ((int32_t)current_accel_data[Z_AXIS] * (int32_t)current_accel_data[Z_AXIS]));
+};
+
+  
+//============================ accel_estimate_earth_z() =======================
+//
+// Estimate the acceleration in the earth Z axis, given accelerations along the
+// aircraft axes and pitch/roll rotations
+
+int16_t                              // Ret: Estimate of Z acceleration in earth axis 
+accel_estimate_earth_z(
+  const int16_t rot_rad[2])          // In:  Measured rotation values, in (rad / ROT_RAD)
+                                     //      ROT_NONE if no valid measurement
+                    
+{
+  uint8_t rot;
+  int16_t temp_rot_rad;
+  uint8_t i_table[2];
+  boolean rot_negative[2];
+  int16_t z_accel;
+#if PRINT_TRANSLATED_ACCEL
+  static float velocity = 0;
+#endif
+
+
+  // Convert rotation angle inputs to table indices.
+  
+  for (rot = ROLL; rot <= PITCH; rot++)
+  {
+    temp_rot_rad = rot_rad[rot];
+    
+#if PRINT_TRANSLATED_ACCEL
+    Serial.print(ROT_TO_DEG(temp_rot_rad), DEC);
+    Serial.print('\t');
+#endif
+
+    // Find absolute value, but remember if it was negative or positive
+    // for later usage.
+    
+    if (temp_rot_rad < 0)
+    {
+      temp_rot_rad = -temp_rot_rad;
+      rot_negative[rot] = true;
+    }
+
+    else
+      rot_negative[rot] = false;
+
+    // Make sure we don't overflow the tables ranges
+    
+    if (temp_rot_rad > COEFF_TABLE_MAX_ANGLE)
+      temp_rot_rad = COEFF_TABLE_MAX_ANGLE;
+
+    // Round and scale down to table index scale
+    
+    i_table[rot] = ((uint16_t)temp_rot_rad + (1 << (COEFF_TABLE_ANGLE_SHIFT - 1))) >>
+                                                               COEFF_TABLE_ANGLE_SHIFT;
+  };
+
+#if PRINT_TRANSLATED_ACCEL
+  Serial.print((uint16_t)pgm_read_byte(&(z_acc_z_coeff_table[i_table[ROLL]][i_table[PITCH]])), DEC);
+  Serial.print('\t');
+  Serial.print((uint16_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])), DEC);
+  Serial.print('\t');
+  Serial.print((uint16_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])), DEC);
+  Serial.print('\t');
+#endif
+
+  // Get the measured Z factor from the table and multiple by the
+  // measured Z acceleration
+  
+  z_accel = ((uint8_t)pgm_read_byte(&(z_acc_z_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
+             (current_accel_data[Z_AXIS] >> ACCEL_SHIFT)) >> 1;
+
+  // Get the measured X factor from the table and multiply by the
+  // measured X acceleration, then subtract or add if the pitch
+  // was positive/negative
+  
+  if (rot_negative[PITCH])
+    z_accel -= ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
+                (current_accel_data[X_AXIS] >> ACCEL_SHIFT)) >> 2;
+  else
+    z_accel += ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[ROLL]][i_table[PITCH]])) *
+                (current_accel_data[X_AXIS] >> ACCEL_SHIFT)) >> 2;
+    
+  // Get the measured Y factor from the table and multiply by the
+  // measured Y acceleration, then subtract or add if the roll
+  // was positive/negative
+    
+  if (rot_negative[ROLL])
+    z_accel -= ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])) *
+                (current_accel_data[Y_AXIS] >> ACCEL_SHIFT)) >> 2;
+  else
+    z_accel += ((uint8_t)pgm_read_byte(&(z_acc_xy_coeff_table[i_table[PITCH]][i_table[ROLL]])) *
+                (current_accel_data[Y_AXIS] >> ACCEL_SHIFT)) >> 2;
+
+#if PRINT_TRANSLATED_ACCEL
+  Serial.print(current_accel_data[X_AXIS] >> ACCEL_SHIFT, DEC);
+  Serial.print('\t');
+  Serial.print(current_accel_data[Y_AXIS] >> ACCEL_SHIFT, DEC);
+  Serial.print('\t');
+  Serial.print(current_accel_data[Z_AXIS] >> ACCEL_SHIFT, DEC);
+  Serial.print('\t');
+  if (rot_negative[PITCH])
+    Serial.print('-');
+  Serial.print(i_table[PITCH], DEC);
+  Serial.print('\t');
+  if (rot_negative[ROLL])
+    Serial.print('-');
+  Serial.print(i_table[ROLL], DEC);
+  Serial.print('\t');
+  Serial.print(z_accel, DEC);
+#endif
+
+  z_accel >>= ACCEL_TRANSLATION_SHIFT;
+  z_accel -= (accel_ez_1g >> ACCEL_SHIFT);
+
+#if PRINT_TRANSLATED_ACCEL
+  Serial.print('\t');
+  Serial.print(z_accel, DEC);
+  Serial.print('\t');
+  Serial.print((float)z_accel/5.34);    // Scale to 1m/sec^2 
+  velocity += ((float)z_accel/534);    // Scale to 1m/sec^2 and cycle time
+  Serial.print('\t');
+  Serial.print(accel_ez_1g);
+  Serial.print('\t');
+  Serial.println(velocity);
+#endif
+
+  return z_accel;
+}
+
+
 //========================== accel_get_current() ==============================
 //
 // Get the current accelerometers data (that has been read before from the h/w)
@@ -267,9 +448,9 @@ void
 accel_get_current(int8_t accel_data[NUM_AXES])   // Out: 3 axis data
 
 {
-  accel_data[X_AXIS] = current_accel_data[X_AXIS];
-  accel_data[Y_AXIS] = current_accel_data[Y_AXIS];
-  accel_data[Z_AXIS] = current_accel_data[Z_AXIS];
+  accel_data[X_AXIS] = current_accel_data[X_AXIS] >> ACCEL_SHIFT;
+  accel_data[Y_AXIS] = current_accel_data[Y_AXIS] >> ACCEL_SHIFT;
+  accel_data[Z_AXIS] = current_accel_data[Z_AXIS] >> ACCEL_SHIFT;
 };
 
 

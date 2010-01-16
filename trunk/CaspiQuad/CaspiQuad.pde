@@ -12,7 +12,6 @@
 #include "receiver.h"
 #include "pid.h"
 #include "rotation_estimator.h"
-#include "accel_translation.h"
 #include "indicators.h"
 #include "serial_telemetry.h"
 #include "eeprom_utils.h"
@@ -502,6 +501,10 @@ void loop()
             rot_estimator[ROLL].reset();
             rot_estimator[PITCH].reset();
             yaw_estimator.reset();
+
+            // Measure the rest earth G acceleration
+
+            accel_zero_earth_z();
             
             // Advance to next sub-state
             
@@ -783,18 +786,6 @@ void loop()
                           ((receiver_rot_command[YAW] >= (int16_t) RECEIVER_YAW_ZERO_MAX) ||
                            (receiver_rot_command[YAW] <= (int16_t)-RECEIVER_YAW_ZERO_MAX)));
     
-#if ESTIMATE_EARTH_ACCEL
-    // Following is a test code that estimates earth-axis acceleration
-    
-    {
-      int8_t accel_data[NUM_AXES];
-
-      
-      accel_get_current(accel_data);
-      estimate_earth_z_accel(accel_data, rot_estimate);
-    };
-#endif
-    
     // PID Control using Rotation & Rotation Rate
     // ==========================================
     //
@@ -936,7 +927,8 @@ void loop()
     {
       // Do the PID for the altitude
 
-      motor_alt_command = alt_pid.update_pd_i(0, baro_alt_estimate_get());
+      motor_alt_command = alt_pid.update_pd_i(-accel_estimate_earth_z(rot_estimate),
+                                              baro_alt_estimate_get());
       
       // Constrain the altitude command to the minimum and maximum legal
       // values and add to the stored initial throttle command

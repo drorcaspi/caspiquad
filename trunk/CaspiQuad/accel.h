@@ -83,6 +83,25 @@ accel_get_rotations(
                        //      ROT_NONE if no valid measurement
 
 
+//============================ accel_zero_earth_z() ===========================
+//
+// Measure the earth 1G at rest
+
+void
+accel_zero_earth_z(void);
+                       
+                       
+//============================ accel_estimate_earth_z() =======================
+//
+// Estimate the acceleration in the earth Z axis, given accelerations along the
+// aircraft axes and pitch/roll rotations
+
+int16_t                             // Ret: Estimate of Z acceleration in earth axis 
+accel_estimate_earth_z(
+  const int16_t rot_rad[2]);        // In:  Measured rotation values, in (rad / ROT_RAD)
+                                    //      ROT_NONE if no valid measurement
+
+                                    
 //========================== accel_get_current() ==============================
 //
 // Get the current accelerometers data (that has been read before from the h/w)

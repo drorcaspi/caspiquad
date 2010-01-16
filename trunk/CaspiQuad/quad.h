@@ -57,7 +57,7 @@
                                          // controls
 #define SUPPORT_ACCEL                  1 // Usage of accelerometers
 #define SUPPORT_ACCEL_CALIBRATION      0 // Accelerometer calibration
-#define ESTIMATE_EARTH_ACCEL           0
+#define ESTIMATE_EARTH_ACCEL           1
 #define SUPPORT_BARO                   1 // Usage of barometric pressure sensor
 #define SUPPORT_TELEMENTRY             1
 
