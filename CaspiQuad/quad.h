@@ -57,9 +57,39 @@
                                          // controls
 #define SUPPORT_ACCEL                  1 // Usage of accelerometers
 #define SUPPORT_ACCEL_CALIBRATION      0 // Accelerometer calibration
-#define ESTIMATE_EARTH_ACCEL           1
-#define SUPPORT_BARO                   1 // Usage of barometric pressure sensor
+#define SUPPORT_ACCEL_ROT_DISPLAY      1 // Display rotation measurement status
+#define ESTIMATE_EARTH_ACCEL           0
+#define SUPPORT_BARO                   0 // Usage of barometric pressure sensor
 #define SUPPORT_TELEMENTRY             1
+
+
+//=============================================================================
+//
+//  Receiver Channel Assignments
+//
+//  NOTE: Never assign the same channel to more than one usage!
+//
+//=============================================================================
+
+// Switch between pitch/roll stick control of rotation angle or rotation rate
+
+#define SUPPORT_ROT_RATE_SWITCH        0
+#define ENABLE_ROT_RATE_CH             GEAR_CH
+
+// Switch on/off derivative calculation of pitch/roll stick
+
+#define SUPPORT_ROT_DERIVATIVE_SWITCH  1
+#define ENABLE_ROT_DERIVATIVE_CH       AUX1_CH
+
+// Switch on/off altitude hold
+
+#define SUPPORT_ALT_HOLD_SWITCH        1
+#define ENABLE_ALT_HOLD_CH             GEAR_CH
+
+// Switch on/off accelerometers measurement of pitch/roll rotation angles
+
+#define SUPPORT_ACCEL_ROT_SWITCH       0
+#define DISABLE_ACCEL_ROT_CH           AUX1_CH
 
 
 //=============================================================================
