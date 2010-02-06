@@ -124,7 +124,11 @@ typedef enum
 // Averaging definitions
 
 #define BARO_PRESSURE_AVG_INIT   0x80000000
-#define BARO_PRESSURE_AVG_SHIFT  3
+#define BARO_PRESSURE_AVG_SHIFT  3   // LPF @ ~ 12Hz 
+
+#if (CONTROL_LOOP_CYCLE_MSEC != 10)
+  #error The above definition of BARO_PRESSURE_AVG_SHIFT needs to be fixed
+#endif
 
 
 //=============================================================================
@@ -141,6 +145,7 @@ static int16_t bmp085_eeprom[BMP085_EEPROM_NUM]
 #endif
 ;
 
+static int32_t pressure_pa;
 static int32_t baro_pressure_avg   = BARO_PRESSURE_AVG_INIT;
 static int32_t baro_pressure_zero;
 
@@ -221,7 +226,6 @@ baro_update(void)
   static uint8_t baro_cycle   = BARO_CYCLE_READ_TEMP;
   static int16_t b6;
   int16_t        temperature_01c;
-  int32_t        pressure_pa;
   uint16_t       ut;
   uint32_t       up;
   int32_t        b3;
@@ -346,23 +350,6 @@ baro_update(void)
       Serial.print('\t');
 #endif
 
-      // Do a simple IIR averaging
-
-      if (baro_pressure_avg == BARO_PRESSURE_AVG_INIT)
-      {
-         baro_pressure_avg = pressure_pa << BARO_PRESSURE_AVG_SHIFT;
-      }
-         
-      else
-      {
-        baro_pressure_avg -= (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT);
-        baro_pressure_avg += pressure_pa;
-      }
-      
-#if PRINT_BARO
-      Serial.println((baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT), DEC);
-#endif
-      
       break;
 
     default:
@@ -396,13 +383,36 @@ int16_t
 baro_alt_estimate_get(void)
 
 {
+  int32_t        last_baro_pressure_avg;
+  int16_t        baro_pressure_diff_pa;
   int16_t        altitude_cm;
   
   
-  // Calculate the altitude in CM, as pressure difference * 8.43
+  // Do a simple IIR averaging of the barometric pressue, and calculate the
+  // derivative at the same time
   
-  altitude_cm = (-1079 * (baro_pressure_zero - baro_pressure_avg)) >>
-                                                 (7 + BARO_PRESSURE_AVG_SHIFT);
+  if (baro_pressure_avg == BARO_PRESSURE_AVG_INIT)
+  {
+     baro_pressure_avg = pressure_pa << BARO_PRESSURE_AVG_SHIFT;
+     baro_pressure_diff_pa = 0;
+  }
+     
+  else
+  {
+    baro_pressure_diff_pa = pressure_pa - 
+                            (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT)
+    baro_pressure_avg += baro_pressure_diff_pa;
+  }
+  
+#if PRINT_BARO
+  Serial.println((baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT), DEC);
+#endif
+
+  // Calculate the altitude in CM, as pressure difference * 8 (should be 8.43,
+  // but this approximation is good enough)
+  
+  altitude_cm = (baro_pressure_avg - baro_pressure_zero) >> 
+                                                 (BARO_PRESSURE_AVG_SHIFT - 3);
 
 #if PRINT_BARO
   Serial.println(altitude_cm, DEC);

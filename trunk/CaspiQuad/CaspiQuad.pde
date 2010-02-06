@@ -283,10 +283,12 @@ void loop()
 {
   // Static Local Variables
   
-  static BatStatus   bat_status                  = BAT_OK;
+  static BatStatus   bat_status                      = BAT_OK;
                           // Battery status
-
-  static boolean     was_alt_hold                = false;
+  static int16_t     last_receiver_rot_command[2]    = {ROT_NONE, ROT_NONE};
+                          // Last cycle's rotation command input from the
+                          // reciever (pitch/roll only)
+  static boolean     was_alt_hold                    = false;
                           // Indicates if we had altitude hold in the last cycle
   static int16_t     alt_hold_motor_throttle_command = 0;
                           // Throttle command for altitude hold.  Set on
@@ -313,9 +315,6 @@ void loop()
                           // Scale is defined by ROT_SCALE_RAD
   float              rot_rate_error;
                           // Rotation rate error (command - measurement) (rad/sec)
-  boolean            receiver_controls_rot;
-                          // If true, receiver controls rotation, else it
-                          // control rotation rate
   float              temp_motor_rot_command;
                           // Temporarily holds the motor rotation command before
                           // converting to int16_t
@@ -743,7 +742,11 @@ void loop()
     
     // Get the roll & pitch measurements from the accelerators
 
-    if ((! accel_ok) || receiver_get_boolean(AUX1_CH))
+    if ((! accel_ok)
+#if SUPPORT_ACCEL_ROT_SWITCH
+        || receiver_get_boolean(DISABLE_ACCEL_ROT_CH)
+#endif
+       )
     {
       // Accelerometers failure or test mode - ignore the accelerometer inputs
 
@@ -754,6 +757,7 @@ void loop()
     else
       accel_get_rotations(rot_measurement);
 
+#if SUPPORT_ACCEL_ROT_DISPLAY
     // Indicate whether we have legal measurements on both axes
 
     if ((rot_measurement[ROLL ] != ROT_NONE) &&
@@ -761,6 +765,7 @@ void loop()
       indicators_set(IND_FLIGHT_WITH_ACCEL);
     else
       indicators_set(IND_FLIGHT_WITHOUT_ACCEL);
+#endif
 
     // Estimate the roll & pitch rotations based on measurements
     
@@ -814,48 +819,37 @@ void loop()
       rot_error = -rot_estimate[rot];
       rot_rate_error = -gyro[rot].get_rad_per_sec();
       
-      if ((rot != YAW) /* && (! receiver_get_boolean(GEAR_CH)) */ )
-        receiver_controls_rot = true;
-      else
-        receiver_controls_rot = false;
-
-      if (temp_receiver_rot_command >= (int16_t)receiver_rot_limit)
+      if ((rot != YAW)
+#if SUPPORT_ROT_RATE_SWITCH
+           && (! receiver_get_boolean(ENABLE_ROT_RATE_CH))
+#endif
+         )
       {
-        // We're above the center range
-        
-        if (receiver_controls_rot)
-        {
-          receiver_controls_rot = false;
+        // Receiver input controls rotation angle
 
-          // Receiver command is zero at the range limit 
-          
-          temp_receiver_rot_command -= (int16_t)receiver_rot_limit;
+        // Scale the receiver command to the rotation scale (as set by
+        // ROT_SCAL_RAD) and calculate the rotation error
+
+        temp_receiver_rot_command *= receiver_rot_gain;
+        
+        rot_error += temp_receiver_rot_command;
+
+        // Calculate the receiver command's derivative,scale to the
+        // rotation rate scale (rad/sec) and calculate the rotation rate
+        // error
+
+        if ((last_receiver_rot_command[rot] != ROT_NONE)
+#if SUPPORT_ROT_DERIVATIVE_SWITCH
+            && receiver_get_boolean(ENABLE_ROT_DERIVATIVE_CH)
+#endif
+           )
+        {
+          rot_rate_error += (float)(temp_receiver_rot_command - last_receiver_rot_command[rot]) *
+                            (1 / (float)ROT_SCALE_RAD * (float)CONTROL_LOOP_CYCLE_SEC);
+
         }
 
-        rot_error = 0;  // Do not consider rotation estimation
-      }
-
-      else if (temp_receiver_rot_command <= -(int16_t)receiver_rot_limit)
-      {
-        // We're below the center range
-        
-        if (receiver_controls_rot)
-        {
-          receiver_controls_rot = false;
-
-          // Receiver command is zero at the range limit 
-          
-          temp_receiver_rot_command += (int16_t)receiver_rot_limit;
-        }
-
-        rot_error = 0;  // Do not consider rotation estimation
-      };
-      
-      if (receiver_controls_rot)
-      {
-        // Receiver input control rotation angle
-        
-        rot_error += temp_receiver_rot_command * receiver_rot_gain;
+        last_receiver_rot_command[rot] = temp_receiver_rot_command;
       }
 
       else
@@ -904,7 +898,7 @@ void loop()
     // Altitude control using barometer input
     // --------------------------------------
 
-    is_alt_hold = baro_ok && receiver_get_boolean(GEAR_CH);
+    is_alt_hold = baro_ok && receiver_get_boolean(ENABLE_ALT_HOLD_CH);
     
     if ((is_alt_hold) && (! was_alt_hold))
     {

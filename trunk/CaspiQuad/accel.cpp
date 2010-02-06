@@ -67,6 +67,7 @@
 #define LIS302DL_OUT_Y          0x2B
 #define LIS302DL_OUT_Z          0x2D
 
+
 //-----------------------------------------------------------------------------
 //
 // Accelerometer Low-Pass Filtering Definitions
@@ -126,13 +127,9 @@ static int8_t flat_accel_data[NUM_AXES] = {0, 0, ACCEL_TYP_1G};
 static int16_t accel_long_avg[NUM_AXES];
 #endif
 
-//=============================================================================
-//
-// Static Variables
-//
-//=============================================================================
+// Earth-axis Z acceleration @ 1G (static)
 
-static int16_t accel_ez_1g;   // Earth-axis Z acceleration @ 1G (static)
+static int16_t accel_ez_1g;
 
 
 //=============================== accel_init() ================================
