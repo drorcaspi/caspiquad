@@ -3,6 +3,7 @@
 = Flights =
 
 <wiki:video url="http://www.youtube.com/watch?v=h3iEcCEg880"/>
+<wiki:video url="http://www.youtube.com/watch?v=nG6zmls5haI"/>
 <wiki:video url="http://www.youtube.com/watch?v=SQUekTIQeDg"/>
 <wiki:video url="http://www.youtube.com/watch?v=LmzFKYqymqg"/>
 <wiki:video url="http://www.youtube.com/watch?v=GkX9iKVcm7M"/>
