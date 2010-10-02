@@ -115,6 +115,16 @@ public:
   update_pd_i(float error,    // In:  Measured error
               float i_error); // In:  Measured integrated error
 
+  //============================== update_pid() =================================
+  //
+  // Perform the PID algorithm, calulate the correction value given measured
+  // errors (proportional, integral and derivative).
+  
+  float                              // Ret: Correction value
+  update_pid(int16_t p_error,   // In:  Measured error
+             int16_t i_error,   // In:  Measured integrated error
+             int16_t d_error);  // In:  Measured derivative error
+
   //============================== update() ===================================
   //
   // Perform the PID algorithm and calulate the correction value

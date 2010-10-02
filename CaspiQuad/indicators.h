@@ -50,14 +50,15 @@ typedef enum
   IND_ROT_NEGATIVE                    = 10, // Indicate rotation stick < 0
   IND_ARMING                          = 11, // Warning - arming motors
   IND_FLIGHT                          = 12, // Everything ready & armed, motors running
-  IND_FLIGHT_WITH_ACCEL               = 13, // Valid angle estimation using accelerometer
-  IND_FLIGHT_WITHOUT_ACCEL            = 14, // No valid angle estimation using accelerometer
-  IND_BAT_WARN                        = 15, // Battery warning
-  IND_BAT_LOW                         = 16, // Battery empty
-  IND_HW_ERR_ACCEL_INIT               = 17, // Hardware error: can't read accelerometers 
-  IND_HW_ERR_BARO_INIT                = 18, // Hardware error: can't read barometer 
-  IND_SW_WARN_LOOP_CYCLE              = 19, // Software warning: didn't complete main cycle on time
-  IND_SW_ERR                          = 20, // Software error
+  IND_FLIGHT_ALT_HOLD                 = 13, // Flight with altitude hold active
+  IND_FLIGHT_WITH_ACCEL               = 14, // Valid angle estimation using accelerometer
+  IND_FLIGHT_WITHOUT_ACCEL            = 15, // No valid angle estimation using accelerometer
+  IND_BAT_WARN                        = 16, // Battery warning
+  IND_BAT_LOW                         = 17, // Battery empty
+  IND_HW_ERR_ACCEL_INIT               = 18, // Hardware error: can't read accelerometers 
+  IND_HW_ERR_BARO_INIT                = 19, // Hardware error: can't read barometer 
+  IND_SW_WARN_LOOP_CYCLE              = 20, // Software warning: didn't complete main cycle on time
+  IND_SW_ERR                          = 21, // Software error
   IND_NUM
 } IndicatorStatus;
 

@@ -194,6 +194,36 @@ PID::update_pd_i(float error,    // In:  Measured error
 };
 
 
+//============================== update_pid() =================================
+//
+// Perform the PID algorithm, calulate the correction value given measured
+// errors (proportional, integral and derivative).
+
+float                              // Ret: Correction value
+PID::update_pid(int16_t p_error,   // In:  Measured error
+                int16_t i_error,   // In:  Measured integrated error
+                int16_t d_error)   // In:  Measured derivative error
+
+{
+#if PRINT_PID
+  Serial.print(p);
+  Serial.print("\t");
+  Serial.print(i);
+  Serial.print("\t");
+  Serial.print(d);
+  Serial.print("\t");
+  Serial.print(p_error);
+  Serial.print("\t");
+  Serial.print(i_error);
+  Serial.print("\t");
+  Serial.print(d_error);
+  Serial.print("\t");
+#endif
+
+  return (p * p_error) + (i * i_error) + (d * d_error);
+};
+
+
 #if 0
 //============================== update() =====================================
 //

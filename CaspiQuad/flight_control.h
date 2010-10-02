@@ -81,11 +81,29 @@ extern int16_t                 motor_rot_command[NUM_ROTATIONS];
 //
 //=============================================================================
 
+//=========================== flight_control_init() ===========================
+//
+// Initialize the flight control
+
+int                             // Ret: Next address in EEPROM
+flight_control_init(
+  int   eeprom_addr);           // In: Base address in EEPROM
+
+
 //====================== flight_control_write_eeprom() ========================
 //
 // Write the configuration parameters to EEPROM
 
 void flight_control_write_eeprom(void);
+
+
+//=========================== flight_control_alt() ============================
+//
+// Altitude control using barometer input
+
+int16_t                              // Ret: Updated throttle command
+flight_control_alt(
+  int16_t motor_throttle_command);   // In : Throttle command from thr receiver
 
 
 #endif
