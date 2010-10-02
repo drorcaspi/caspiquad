@@ -626,6 +626,7 @@ ReceiverRotation::get_rotation(void)
       if (diff < 0)
       {
         // Double the slope at the negative edge
+        
         ret_val += diff;
       }
     }

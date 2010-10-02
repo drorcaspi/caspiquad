@@ -57,10 +57,11 @@
                                          // controls
 #define SUPPORT_ACCEL                  1 // Usage of accelerometers
 #define SUPPORT_ACCEL_CALIBRATION      0 // Accelerometer calibration
-#define SUPPORT_ACCEL_ROT_DISPLAY      1 // Display rotation measurement status
+#define SUPPORT_ACCEL_ROT_INDICATION   0 // Indicate rotation measurement
+                                         // status (are we using the accel.?)
 #define ESTIMATE_EARTH_ACCEL           0
 #define SUPPORT_BARO                   0 // Usage of barometric pressure sensor
-#define SUPPORT_TELEMENTRY             1
+#define SUPPORT_TELEMENTRY             1 // Support serial control protocol
 
 
 //=============================================================================
@@ -83,7 +84,7 @@
 
 // Switch on/off altitude hold
 
-#define SUPPORT_ALT_HOLD_SWITCH        1
+#define SUPPORT_ALT_HOLD_SWITCH        0
 #define ENABLE_ALT_HOLD_CH             GEAR_CH
 
 // Switch on/off accelerometers measurement of pitch/roll rotation angles

@@ -58,17 +58,6 @@ typedef enum
 
 #define RECEIVER_YAW_ZERO_MAX    32
 
-// Thresholds for initiating altitude hold mode
-
-#define ALT_HOLD_MOTOR_THROTTLE_MAX    850
-#define ALT_HOLD_MOTOR_THROTTLE_MIN    600
-
-// Range of throttle automatic control in altitude hold mode
-// (from center to edge in either direction)
-
-#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX   300
-#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN  -100
-
 
 //=============================================================================
 //
@@ -101,7 +90,6 @@ RotationEstimator  rot_estimator[2];
 RotationManualEstimator       yaw_estimator;
 
 PID                rot_rate_pid[NUM_ROTATIONS];
-PID                alt_pid;
  
 float              receiver_rot_rate_gain = 0.003;  // (rad/sec)
                     // Multiplies the receiver rotation command (cenetered)
@@ -256,13 +244,9 @@ void setup()
                                                  0.003,// I
                                                  0,    // D
                                                  0);   // windup_guard - NOT USED
- 
-  eeprom_addr = alt_pid.read_eeprom(eeprom_addr,
-                                    0,   // P
-                                    0,   // I
-                                    0,   // D
-                                    0);  // windup_guard (rad/sec)
 
+  eeprom_addr = flight_control_init(eeprom_addr);
+  
   delay(1000);  // 1 second delay before we start.  Allows things such as
                 // battery monitor, various filters to stabilize.
   
@@ -757,7 +741,7 @@ void loop()
     else
       accel_get_rotations(rot_measurement);
 
-#if SUPPORT_ACCEL_ROT_DISPLAY
+#if SUPPORT_ACCEL_ROT_INDICATION
     // Indicate whether we have legal measurements on both axes
 
     if ((rot_measurement[ROLL ] != ROT_NONE) &&
@@ -896,44 +880,9 @@ void loop()
 
 #if SUPPORT_BARO
     // Altitude control using barometer input
-    // --------------------------------------
 
-    is_alt_hold = baro_ok && receiver_get_boolean(ENABLE_ALT_HOLD_CH);
-    
-    if ((is_alt_hold) && (! was_alt_hold))
-    {
-      // The altitude hold has just been togggled to ON
-
-      if ((motor_throttle_command >= (int16_t)ALT_HOLD_MOTOR_THROTTLE_MIN) &&
-          (motor_throttle_command <= (int16_t)ALT_HOLD_MOTOR_THROTTLE_MAX))
-      {
-        // Throttle is within limit for start of altitude hold
-
-        alt_hold_motor_throttle_command = motor_throttle_command;
-        baro_alt_estimate_zero();
-      }
-
-      else
-        is_alt_hold = false;
-    }
-
-    if (is_alt_hold)
-    {
-      // Do the PID for the altitude
-
-      motor_alt_command = alt_pid.update_pd_i(-accel_estimate_earth_z(rot_estimate),
-                                              baro_alt_estimate_get());
-      
-      // Constrain the altitude command to the minimum and maximum legal
-      // values and add to the stored initial throttle command
-
-      motor_throttle_command = alt_hold_motor_throttle_command +
-                               (int16_t)constrain(motor_alt_command,
-                                                  (float)ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN,
-                                                  (float)ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX);
-    }
-      
-    was_alt_hold = is_alt_hold;
+    if (baro_ok)
+      motor_throttle_command = flight_control_alt(motor_throttle_command);
 #endif
 
     motors_command(motor_throttle_command,

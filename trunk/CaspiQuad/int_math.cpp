@@ -1,19 +1,14 @@
-#ifndef __BARO_H__
-#define __BARO_H__
-
+#if 0
 //=============================================================================
 //
-// Barometric Pressure Sensor API
+// Integer Math Utilities
 //
 //=============================================================================
 
 /*-----------------------------------------------------------------------------
   CaspiQuad 1
-  Copyright (c) 2009 Dror Caspi.  All rights reserved.
+  Copyright (c) 2010 Dror Caspi.  All rights reserved.
 
-  Based on AeroQuad (http://www.AeroQuad.info)
-  Copyright (c) 2009 Ted Carancho.  All rights reserved.
- 
   This program is free software: you can redistribute it and/or modify 
   it under the terms of the GNU General Public License as published by 
   the Free Software Foundation, either version 3 of the License, or 
@@ -28,9 +23,31 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>. 
 -----------------------------------------------------------------------------*/
 
+#include "quad.h"
+#include "int_math.h"
+
+
 //=============================================================================
 //
-// Public Definitions
+// Private Definitions
+//
+//=============================================================================
+
+// None
+
+
+//=============================================================================
+//
+// Static Variables
+//
+//=============================================================================
+
+// None
+
+
+//=============================================================================
+//
+// Public Variables
 //
 //=============================================================================
 
@@ -43,37 +60,36 @@
 //
 //=============================================================================
 
-//=============================== baro_init() =================================
+//============================= sqrt32() ======================================
 //
-// Initialize the barometric sensor module
-// Should be called on system initalization
+// Integer square root
+// Based on "Integer Square Root" article by Jack W. Crenshaw,
+// http://www.embedded.com/98/9802fe2.htm
 
-boolean             // Ret: true if OK, false if failed
-baro_init(void);
+uint16_t sqrt32(uint32_t a)
 
+{
+  uint32_t rem  = 0;
+  uint32_t root = 0;
+  uint8_t  i;
 
-//=============================== baro_update() ===============================
-//
-// Update the barometric sensor readings from the h/w
+  for (i = 0; i < 16; i++)
+  {
+    rem = ((rem << 2) + (a >> 30));
+    a <<= 2;
+    root = (root << 1) + 1;
+    
+    if (root <= rem)
+    {
+      rem -= root;
+      root++;
+    }
+    
+    else
+      root--;
+  }
 
-boolean             // Ret: true if OK, false if failed
-baro_update(void);
-
-
-//========================= baro_alt_estimate_zero() ==========================
-//
-// Zero the barometric sensor altitude estimate to the current average
-
-void
-baro_alt_estimate_zero(void);
-
-
-//========================= baro_alt_estimate_get() ===========================
-//
-// Get the barometric sensor altitude estimate
-
-int16_t                   // Ret: Altitude diff. from the zero point, in 8 cm
-baro_alt_estimate_get(
-  int16_t *p_vert_speed); // Out: Vertical speed etimate, in 1/843 cm/sec
+  return (uint16_t)(root >> 1);
+}
 
 #endif

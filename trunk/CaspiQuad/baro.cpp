@@ -379,13 +379,14 @@ baro_alt_estimate_zero(void)
 //
 // Get the barometric sensor altitude estimate
 
-int16_t
-baro_alt_estimate_get(void)
+int16_t                   // Ret: Altitude diff. from the zero point, in 8 cm
+baro_alt_estimate_get(
+  int16_t *p_vert_speed)  // Out: Vertical speed etimate, in 1/843 cm/sec
 
 {
   int32_t        last_baro_pressure_avg;
   int16_t        baro_pressure_diff_pa;
-  int16_t        altitude_cm;
+  int16_t        altitude_8cm;
   
   
   // Do a simple IIR averaging of the barometric pressue, and calculate the
@@ -399,26 +400,34 @@ baro_alt_estimate_get(void)
      
   else
   {
-    baro_pressure_diff_pa = pressure_pa - 
-                            (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT)
-    baro_pressure_avg += baro_pressure_diff_pa;
+    // Calculate the DECREASE in barometric pressure
+    
+    baro_pressure_diff_pa = (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT) -
+                            pressure_pa;
+
+    // Use this to calculate the IIR average
+    
+    baro_pressure_avg -= baro_pressure_diff_pa;
+
+    // Barometric pressure change is in pa / cycle_time
+    // With 8.43 cm per pa and an update rate of 100Hz,
+    // vertical speed is in units of 1 / 843 cm/sec
+    
+    *p_vert_speed = baro_pressure_diff_pa;
   }
   
-#if PRINT_BARO
-  Serial.println((baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT), DEC);
-#endif
-
-  // Calculate the altitude in CM, as pressure difference * 8 (should be 8.43,
+  // Calculate the altitude in units of 8 cm, roughly 1 Pa (should be 8.43 cm,
   // but this approximation is good enough)
   
-  altitude_cm = (baro_pressure_avg - baro_pressure_zero) >> 
-                                                 (BARO_PRESSURE_AVG_SHIFT - 3);
+  altitude_8cm = (baro_pressure_zero - baro_pressure_avg) >> BARO_PRESSURE_AVG_SHIFT;
 
 #if PRINT_BARO
-  Serial.println(altitude_cm, DEC);
+  Serial.print((49 * baro_pressure_diff_pa) >> 12, DEC);  // 0.1 cm/sec
+  Serial.print('\t');
+  Serial.println(altitude_8cm * 8, DEC);
 #endif
 
-  return altitude_cm;
+  return altitude_8cm;
 }
 
 #endif // SUPPORT_BARO
