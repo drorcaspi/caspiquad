@@ -53,8 +53,8 @@
 //
 //=============================================================================
 
-#define AUTO_ZERO_RECEIVER_ROLL_PITCH  0 // Auto-zero the received roll & pitch
-                                         // controls
+//#define AUTO_ZERO_RECEIVER_ROLL_PITCH  0 // Auto-zero the received roll & pitch
+//                                         // controls
 #define SUPPORT_ACCEL                  1 // Usage of accelerometers
 #define SUPPORT_ACCEL_CALIBRATION      0 // Accelerometer calibration
 #define SUPPORT_ACCEL_ROT_INDICATION   0 // Indicate rotation measurement
@@ -72,14 +72,23 @@
 //
 //=============================================================================
 
-// Switch between pitch/roll stick control of rotation angle or rotation rate
+// Switch between acrobatic mode and stable mode
+// 0: stable mode, stick controls rotation angle
+// 1: acrobatic mode, no accelerometer usage, stick controls rotation rate
 
-#define SUPPORT_ROT_RATE_SWITCH        0
+#define SUPPORT_ACRO_MODE_SWITCH       0
+#define ENABLE_ACRO_MODE_CH            GEAR_CH
+
+// Switch between pitch/roll stick control of rotation angle or rotation rate
+// 0: stick controls rotation angle
+// 1: stick controls rotation rate
+
+#define SUPPORT_ROT_RATE_SWITCH        1
 #define ENABLE_ROT_RATE_CH             GEAR_CH
 
 // Switch on/off derivative calculation of pitch/roll stick
 
-#define SUPPORT_ROT_DERIVATIVE_SWITCH  1
+#define SUPPORT_ROT_DERIVATIVE_SWITCH  0
 #define ENABLE_ROT_DERIVATIVE_CH       AUX1_CH
 
 // Switch on/off altitude hold
