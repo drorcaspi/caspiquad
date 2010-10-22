@@ -81,6 +81,14 @@ boolean            baro_ok        = false;
 
 // Flight Control Variables
 
+boolean            is_acro_mode        = false;
+                    // false: stable mode, stick controls rotation angle
+                    // true:  acrobatic mode, no accelerometer usage, stick
+                    //        controls rotation rate
+boolean            is_rot_rate_control = false;
+                    // false: stick controls rotation angle
+                    // true:  stick controls rotation rate
+                    
 FlightState        flight_state   = FLIGHT_SETUP;
 static SetupState  setup_state    = SETUP_GYROS;
 static uint16_t    setup_cycles   = 0;
@@ -284,6 +292,13 @@ void loop()
                           // Current time
   uint8_t            cycle_msec;
                           // Measured cycle time
+
+  boolean            yaw_at_zero;
+  boolean            pitch_at_zero;
+  boolean            roll_at_zero;
+  boolean            throttle_at_min;
+                          // Used during setup phase to indicate stick status
+                          
   int16_t            receiver_rot_command[NUM_ROTATIONS];
                           // Rotation command input from the reciever
   int16_t            temp_receiver_rot_command;
@@ -470,18 +485,18 @@ void loop()
           // SENSORS_SETUP_MAX_SEC, indicate an error but continue waiting
           
           if (gyro[PITCH].is_stable() &&
-              gyro[ROLL].is_stable()  &&
-              gyro[YAW].is_stable())
+              gyro[ROLL ].is_stable()  &&
+              gyro[YAW  ].is_stable())
           {
             // Zero all gyros
             
             gyro[PITCH].zero();
-            gyro[ROLL].zero();
-            gyro[YAW].zero();
+            gyro[ROLL ].zero();
+            gyro[YAW  ].zero();
 
             // Reset the rotation estimators
 
-            rot_estimator[ROLL].reset();
+            rot_estimator[ROLL ].reset();
             rot_estimator[PITCH].reset();
             yaw_estimator.reset();
 
@@ -524,18 +539,42 @@ void loop()
           // Wait until the 3 rototations are stable at 0, throttle stable at
           // minimum.  No wait timeout since it depends on the operator.
 
-          // Note that bitwise-and (not logical and) is used in the expression
-          // below. This is necessary; for logical expression the compiler would
-          // do short-circuit evaluation, and would not continue the calculation
-          // if one function returns false.  We need all the functions to by
-          // called in every cycle.
-  
-          if (((receiver_rot[YAW].find_zero()   &
-#if AUTO_ZERO_RECEIVER_ROLL_PITCH
-                receiver_rot[PITCH].find_zero() &
-                receiver_rot[ROLL].find_zero()  &
+          // Set the is_acro mode and is_rot_rate_control here; they are not
+          // allowed to change during flight
+          
+#if SUPPORT_ACRO_MODE_SWITCH
+          is_acro_mode = receiver_get_boolean(ENABLE_ACRO_MODE_CH);
 #endif
-                receiver_throttle.find_min()) != 0)    &&
+
+#if SUPPORT_ROT_RATE_SWITCH
+          is_rot_rate_control = receiver_get_boolean(ENABLE_ROT_RATE_CH);
+#endif
+
+          if (is_acro_mode)
+            is_rot_rate_control = true;
+
+          // Note that all the find*() functions must be called every cycle.
+          // Thus, we call them and put the result into temporary variables, then
+          // do the if statement.  This is necessary; if we were to call the
+          // functions inside the if, the compiler would do short-circuit evaluation,
+          // and would not continue the calculation if one function returns false.
+
+          yaw_at_zero = receiver_rot[YAW].find_zero();
+          pitch_at_zero = true;
+          roll_at_zero  = true;
+          if (is_rot_rate_control)
+          {
+            // Pitch/roll sticks control rate, zero the stick
+            
+            pitch_at_zero = receiver_rot[PITCH].find_zero();
+            roll_at_zero  = receiver_rot[ROLL ].find_zero();
+          }
+          throttle_at_min = receiver_throttle.find_min();
+
+          if (yaw_at_zero     &&
+              pitch_at_zero   &&
+              roll_at_zero    &&
+              throttle_at_min &&
               (setup_cycles > (uint16_t)(SETUP_RECEIVER_MIN_SEC / CONTROL_LOOP_CYCLE_SEC)))
           {
             indicators_set(IND_SETUP_NEXT2);
@@ -550,7 +589,7 @@ void loop()
 
           else if (setup_cycles < (uint16_t)-1)
             setup_cycles++;
-  
+
           break;
   
         case SETUP_RECEIVER_THROTTLE_MAX:
@@ -755,9 +794,22 @@ void loop()
     
     for (rot = ROLL; rot <= PITCH; rot++)
     {
-      rot_estimate[rot] = 
-        rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
-                                    rot_measurement[rot]);
+      if (is_acro_mode)
+      {
+        // In acrobatic mode we do not control pitch/roll rotation angles
+        
+        rot_estimate[rot] = 0;
+      }
+
+      else
+      {
+        // In stable mode we control pitch/roll rotation angles, so get their
+        // estiamtes
+        
+        rot_estimate[rot] = 
+          rot_estimator[rot].estimate(gyro[rot].get_rad_per_sec(),
+                                      rot_measurement[rot]);
+      }
     };
 
     // Eliminite small yaw flutter around 0
@@ -803,10 +855,7 @@ void loop()
       rot_error = -rot_estimate[rot];
       rot_rate_error = -gyro[rot].get_rad_per_sec();
       
-      if ((rot != YAW)
-#if SUPPORT_ROT_RATE_SWITCH
-           && (! receiver_get_boolean(ENABLE_ROT_RATE_CH))
-#endif
+      if ((rot != YAW) && (! is_rot_rate_control)
          )
       {
         // Receiver input controls rotation angle
@@ -887,8 +936,8 @@ void loop()
 
     motors_command(motor_throttle_command,
                    motor_rot_command[PITCH],
-                   motor_rot_command[ROLL],
-                   motor_rot_command[YAW]);
+                   motor_rot_command[ROLL ],
+                   motor_rot_command[YAW  ]);
   }
 
   else
