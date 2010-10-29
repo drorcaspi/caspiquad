@@ -86,6 +86,13 @@
 #define SUPPORT_ROT_RATE_SWITCH        1
 #define ENABLE_ROT_RATE_CH             GEAR_CH
 
+// Switch on/off the zeroing of pitch/roll stick position
+// 0: no zeroing of stick position
+// 1: zeroing of stick position
+
+#define SUPPORT_ROT_ZEROING_SWITCH     1
+#define ENABLE_ROT_ZEROING_CH          AUX1_CH
+
 // Switch on/off derivative calculation of pitch/roll stick
 
 #define SUPPORT_ROT_DERIVATIVE_SWITCH  0
