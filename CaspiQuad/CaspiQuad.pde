@@ -564,10 +564,15 @@ void loop()
           roll_at_zero  = true;
           if (is_rot_rate_control)
           {
-            // Pitch/roll sticks control rate, zero the stick
-            
-            pitch_at_zero = receiver_rot[PITCH].find_zero();
-            roll_at_zero  = receiver_rot[ROLL ].find_zero();
+#if SUPPORT_ROT_ZEROING_SWITCH
+            if (receiver_get_boolean(ENABLE_ROT_ZEROING_CH))
+#endif
+            {
+              // Pitch/roll sticks control rate, zero the stick
+              
+              pitch_at_zero = receiver_rot[PITCH].find_zero();
+              roll_at_zero  = receiver_rot[ROLL ].find_zero();
+            }
           }
           throttle_at_min = receiver_throttle.find_min();
 
