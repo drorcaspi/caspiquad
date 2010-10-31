@@ -98,6 +98,14 @@ public:
   float get_d(void);
   float get_windup_guard(void);
 
+  //============================== update_p() ===================================
+  //
+  // Perform the PID algorithm, calulate the correction value given measured
+  // error (only proportional, both integral and derivative are 0).
+  
+  float                        // Ret: Correction value
+  update_p(int16_t p_error);   // In:  Measured error
+
   //============================== update_pd() ==================================
   //
   // Perform the PID algorithm, calulate the correction value given measured
@@ -152,6 +160,14 @@ public:
   // Zero the integrated error part of the PID
 
   void reset(void);
+
+#if 0
+  //============================== set_i_err() ================================
+  //
+  // Set the integrated error part of the PID to an initial value
+
+  void set_i_err(float initial_i_err);
+#endif
 
   //============================== read_eeprom() ==============================
   //

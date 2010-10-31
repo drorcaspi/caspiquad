@@ -127,6 +127,25 @@ float PID::get_windup_guard(void)
 };
  
 
+//============================== update_p() ===================================
+//
+// Perform the PID algorithm, calulate the correction value given measured
+// error (only proportional, both integral and derivative are 0).
+
+float                            // Ret: Correction value
+PID::update_p(int16_t p_error)   // In : Measured error
+
+{
+#if PRINT_PID
+  Serial.print(p);
+  Serial.print("\t");
+  Serial.print(p_error);
+#endif
+
+  return p * p_error;
+}
+
+
 //============================== update_pd() ==================================
 //
 // Perform the PID algorithm, calulate the correction value given measured
@@ -326,7 +345,19 @@ void PID::reset(void)
 };
 
 
-//============================== read_eeprom() ==============================
+#if 0
+//============================== set_i_err() ==================================
+//
+// Set the integrated error part of the PID to an initial value
+
+void PID::set_i_err(float initial_i_err)
+{
+  integrated_error = initial_i_err;
+};
+#endif
+
+
+//============================== read_eeprom() ================================
 //
 // Read the configuration parameters from EEPROM, if valid.  If not, set
 // defaults.

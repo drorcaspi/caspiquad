@@ -60,7 +60,7 @@
 #define SUPPORT_ACCEL_ROT_INDICATION   0 // Indicate rotation measurement
                                          // status (are we using the accel.?)
 #define ESTIMATE_EARTH_ACCEL           0
-#define SUPPORT_BARO                   0 // Usage of barometric pressure sensor
+#define SUPPORT_BARO                   1 // Usage of barometric pressure sensor
 #define SUPPORT_TELEMENTRY             1 // Support serial control protocol
 
 
@@ -77,20 +77,21 @@
 // 1: acrobatic mode, no accelerometer usage, stick controls rotation rate
 
 #define SUPPORT_ACRO_MODE_SWITCH       0
-#define ENABLE_ACRO_MODE_CH            GEAR_CH
+#define ENABLE_ACRO_MODE_CH            AUX1_CH
 
 // Switch between pitch/roll stick control of rotation angle or rotation rate
 // 0: stick controls rotation angle
 // 1: stick controls rotation rate
 
-#define SUPPORT_ROT_RATE_SWITCH        1
+#define SUPPORT_ROT_RATE_ONLY          1
+#define SUPPORT_ROT_RATE_SWITCH        0  
 #define ENABLE_ROT_RATE_CH             GEAR_CH
 
 // Switch on/off the zeroing of pitch/roll stick position
 // 0: no zeroing of stick position
 // 1: zeroing of stick position
 
-#define SUPPORT_ROT_ZEROING_SWITCH     1
+#define SUPPORT_ROT_ZEROING_SWITCH     0
 #define ENABLE_ROT_ZEROING_CH          AUX1_CH
 
 // Switch on/off derivative calculation of pitch/roll stick
@@ -100,7 +101,7 @@
 
 // Switch on/off altitude hold
 
-#define SUPPORT_ALT_HOLD_SWITCH        0
+#define SUPPORT_ALT_HOLD_SWITCH        1
 #define ENABLE_ALT_HOLD_CH             GEAR_CH
 
 // Switch on/off accelerometers measurement of pitch/roll rotation angles

@@ -35,6 +35,7 @@
 #include "receiver.h"
 #include "pid.h"
 #include "rotation_estimator.h"
+#include "indicators.h"
 #include "flight_control.h"
 
 
@@ -47,11 +48,7 @@
 // Thresholds for initiating altitude hold mode
 
 #define ALT_HOLD_INIT_MOTOR_THROTTLE_MAX     850
-#define ALT_HOLD_INIT_MOTOR_THROTTLE_MIN     600
-
-// Threshold for controlling vertical speed
-
-#define ALT_HOLD_MOTOR_THROTTLE_RANGE        800
+#define ALT_HOLD_INIT_MOTOR_THROTTLE_MIN     550
 
 // Limits on altitude difference as input to altitude hold PID
 
@@ -61,8 +58,8 @@
 // Range of throttle automatic control in altitude hold mode
 // (from center to edge in either direction)
 
-#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX   300
-#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN  -100
+#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX   400
+#define ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN  -150
 
 
 //=============================================================================
@@ -111,6 +108,21 @@ flight_control_init(
 //=========================== flight_control_alt() ============================
 //
 // Altitude control using barometer input
+//
+// Algorithm Description:
+//
+// Start:
+// - Altitude hold starts when toggling a receiver channel
+// - At that point we sample the barometer and set the target altitude
+// - We also sample the throttle channel ans set it as the reference point
+//
+// Ongoing:
+// - Throttle channel input vs. the reference point is used to move the target
+//   altitude up and down.  I.e., it is used as the desired vertical speed.
+// - Barometer input is used as the actual altitude.
+// - PID on the altitude error (as P)
+// - Do not take vertical speed (P) into account, as its measurement resolution
+//   is very rough (about 1m/sec)
 
 int16_t                              // Ret: Updated throttle command
 flight_control_alt(
@@ -123,78 +135,68 @@ flight_control_alt(
                           // State of altitude hold
   static boolean     was_alt_hold_sw                 = true;
                           // State of the altitude hold switch in the last cycle
-  static int16_t     alt_hold_motor_throttle_command = 0;
-                          // Throttle command for altitude hold.  Set on
-                          // initiation of altitude hold mode.
-  static int16_t     target_alt_8cm;
-                          // Target altitude, in cm
+  static int16_t     ref_motor_throttle_command      = 0;
+                          // Throttle command value when altitude hold was initiated
+  static int32_t     target_alt_1_512cm;
+                          // Target altitude, in 1/512 cm units
 
   // Local Variables
                           
   boolean            is_alt_hold_sw;
                           // Current state of the altitude hold switch
-  int16_t            motor_throttle_command_diff;
-                          // How far the throttle is from the altitude hold point
-  int16_t            alt_8cm;
-                          // Altitude from the zero point, in cm
-  int16_t            vert_speed;
-                          // Vertical speed etimate, in 1/843 cm/sec
+  int32_t            alt_cm;
+                          // Altitude from the zero point, in 1 cm units
+  int32_t            alt_err_cm;
+                          // Altitude error
   float              motor_alt_command;
                           // Output of altitude hold PID
 
 
   // Called each cycle, required for correct averaging
 
-  alt_8cm = baro_alt_estimate_get(&vert_speed);
+  alt_cm = baro_alt_estimate_get();
                           
   // Altitude hold in initiated when BOTH conditions exist:
-  // - Receiver altitude hold channel is toggled from OFF to ON, and
-  // - Throttle is within initiation limits
+  // 1. Receiver altitude hold channel is toggled from OFF to ON, and
+  // 2. Throttle is within initiation limits
   //
   // Altitude hold is terminated when EITHER of the conditions exist:
-  // - Receiver altitude hold channel is OFF, or
-  // - Throttle is outside vertical speed control limits
+  // 1. Receiver altitude hold channel is OFF, or
+  // 2. Throttle is outside vertical speed control limits
                           
   is_alt_hold_sw = receiver_get_boolean(ENABLE_ALT_HOLD_CH);
   
   if (is_alt_hold)
   {
-    motor_throttle_command_diff = motor_throttle_command -
-                                  alt_hold_motor_throttle_command;
-
+    // Altitute hold is currently ON
     // Verify if altitude hold is still in effect
     
-    if (is_alt_hold_sw                                                                  &&
-        (motor_throttle_command_diff <=  (int16_t)(ALT_HOLD_MOTOR_THROTTLE_RANGE / 2))  &&
-        (motor_throttle_command_diff >= -(int16_t)(ALT_HOLD_MOTOR_THROTTLE_RANGE / 2)))
+    if (is_alt_hold_sw)
     {
-      // Scale motor_throttle_command_diff to the same units of vert_speed (1/843 cm/sec)
+      // Vertical speed command is controlled by the distance of the throttle command
+      // from its reference point.  Unit is 1/5 cm/sec.
+      // Update the target altitude.  Range is about +/- 1 M/sec.
 
-      motor_throttle_command_diff *= GAIN????;
+      target_alt_1_512cm += motor_throttle_command - ref_motor_throttle_command;
+
+      // Calculate the altitude error and constrain
       
-      // Update the target altitude
-
-      target_alt_8cm += (motor_throttle_command_diff * FACTOR);  // TODO: maybe usint of 8CM is too coarse
-
-      alt_8cm -= target_alt_8cm;
-
-      // Constrain the altitude error before calculating the PID
-      // TODO: This should really be part of the PID, the windup guard
+      alt_err_cm = (target_alt_1_512cm >> 9) - alt_cm;
+      alt_err_cm = constrain(alt_err_cm,
+                             (int32_t)ALT_HOLD_ALT_DIFF_MIN_CM,
+                             (int32_t)ALT_HOLD_ALT_DIFF_MAX_CM);
       
-      alt_8cm = constrain(alt_8cm,
-                          (int16_t)ALT_HOLD_ALT_DIFF_MIN_CM,
-                          (int16_t)ALT_HOLD_ALT_DIFF_MAX_CM);
-                           
-      // Do the PID for the altitude
+      // Calculate the altitude error and do the PID
+      // Note that we do not take the vertical speed error into account.  This is
+      // because the granularity of the barometer measurement would be very rough
+      // (about 1m / sec).
     
-      motor_alt_command = alt_pid.update_pid(alt_8cm,
-                                             vert_speed - (motor_throttle_command_diff * GAIN)??,
-                                             0);
+      motor_alt_command = alt_pid.update_p((int16_t)alt_err_cm);
       
       // Constrain the altitude command to the minimum and maximum legal
       // values and add to the stored initial throttle command
     
-      motor_throttle_command = alt_hold_motor_throttle_command +
+      motor_throttle_command = ref_motor_throttle_command +
                                (int16_t)constrain(motor_alt_command,
                                                   (float)ALT_HOLD_MOTOR_THROTTLE_CHANGE_MIN,
                                                   (float)ALT_HOLD_MOTOR_THROTTLE_CHANGE_MAX);
@@ -205,29 +207,37 @@ flight_control_alt(
       // Terminate altitude hold
       
       is_alt_hold = false;
+      indicators_set(IND_FLIGHT);
     }
   }
 
   else
   {
-    // Altitude hold is currently off, check initiation conditions
+    // Altitude hold is currently OFF
+    // Check initiation conditions
     
     if (is_alt_hold_sw                                                        &&
         (! was_alt_hold_sw)                                                   &&
         (motor_throttle_command >= (int16_t)ALT_HOLD_INIT_MOTOR_THROTTLE_MIN) &&
-        (motor_throttle_command <= (int16_t)ALT_HOLD_INIT_MOTOR_THROTTLE_MAX)
+        (motor_throttle_command <= (int16_t)ALT_HOLD_INIT_MOTOR_THROTTLE_MAX))
     {
+      // Turn altitude hold ON for the next cycle
       // Set the starting point and zero the barometer
     
-      alt_hold_motor_throttle_command = motor_throttle_command;
-      target_alt_8cm = alt_8cm;
+      ref_motor_throttle_command = motor_throttle_command;
+      target_alt_1_512cm = alt_cm << 9;
       is_alt_hold = true;
+      indicators_set(IND_FLIGHT_ALT_HOLD);
     }
   }
 
   // Save the state of the altitude hold switch for the next cycle
   
   was_alt_hold_sw = is_alt_hold_sw;
+
+  // Return the updated throttle command
+  
+  return motor_throttle_command;
 }
 #endif
 
