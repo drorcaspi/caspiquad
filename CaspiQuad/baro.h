@@ -72,8 +72,7 @@ baro_alt_estimate_zero(void);
 //
 // Get the barometric sensor altitude estimate
 
-int16_t                   // Ret: Altitude diff. from the zero point, in 8 cm
-baro_alt_estimate_get(
-  int16_t *p_vert_speed); // Out: Vertical speed etimate, in 1/843 cm/sec
+int32_t                   // Ret: Altitude diff. from the zero point, in cm
+baro_alt_estimate_get(void);
 
 #endif

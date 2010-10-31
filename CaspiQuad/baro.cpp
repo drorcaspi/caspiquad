@@ -379,14 +379,11 @@ baro_alt_estimate_zero(void)
 //
 // Get the barometric sensor altitude estimate
 
-int16_t                   // Ret: Altitude diff. from the zero point, in 8 cm
-baro_alt_estimate_get(
-  int16_t *p_vert_speed)  // Out: Vertical speed etimate, in 1/843 cm/sec
+int32_t                   // Ret: Altitude diff. from the zero point, in cm
+baro_alt_estimate_get(void)
 
 {
-  int32_t        last_baro_pressure_avg;
-  int16_t        baro_pressure_diff_pa;
-  int16_t        altitude_8cm;
+  int32_t        altitude_cm;
   
   
   // Do a simple IIR averaging of the barometric pressue, and calculate the
@@ -395,39 +392,25 @@ baro_alt_estimate_get(
   if (baro_pressure_avg == BARO_PRESSURE_AVG_INIT)
   {
      baro_pressure_avg = pressure_pa << BARO_PRESSURE_AVG_SHIFT;
-     baro_pressure_diff_pa = 0;
   }
      
   else
   {
-    // Calculate the DECREASE in barometric pressure
+    // Calculate the IIR average of the barometric pressure
     
-    baro_pressure_diff_pa = (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT) -
-                            pressure_pa;
-
-    // Use this to calculate the IIR average
-    
-    baro_pressure_avg -= baro_pressure_diff_pa;
-
-    // Barometric pressure change is in pa / cycle_time
-    // With 8.43 cm per pa and an update rate of 100Hz,
-    // vertical speed is in units of 1 / 843 cm/sec
-    
-    *p_vert_speed = baro_pressure_diff_pa;
+    baro_pressure_avg += pressure_pa - (baro_pressure_avg >> BARO_PRESSURE_AVG_SHIFT);
   }
   
-  // Calculate the altitude in units of 8 cm, roughly 1 Pa (should be 8.43 cm,
+  // Calculate the altitude in units of 1 cm, roughly 1/8 Pa (should be 8.43/8 cm,
   // but this approximation is good enough)
   
-  altitude_8cm = (baro_pressure_zero - baro_pressure_avg) >> BARO_PRESSURE_AVG_SHIFT;
+  altitude_cm = (baro_pressure_zero - baro_pressure_avg) >> (BARO_PRESSURE_AVG_SHIFT - 3);
 
 #if PRINT_BARO
-  Serial.print((49 * baro_pressure_diff_pa) >> 12, DEC);  // 0.1 cm/sec
-  Serial.print('\t');
-  Serial.println(altitude_8cm * 8, DEC);
+  Serial.println(altitude_cm, DEC);
 #endif
 
-  return altitude_8cm;
+  return altitude_cm;
 }
 
 #endif // SUPPORT_BARO

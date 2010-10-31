@@ -54,30 +54,30 @@
 // Top and idle value define a range with some guard bands allowing room for
 // varying the actual motor command to control rotation in 3 axis
 
-#define MOTOR_COMMAND_TOP     (MOTOR_COMMAND_MAX - 20)
-#define MOTOR_COMMAND_IDLE    (MOTOR_COMMAND_MIN + 10)
+#define MOTOR_COMMAND_TOP     (MOTOR_COMMAND_MAX - 20)  // 204
+#define MOTOR_COMMAND_IDLE    (MOTOR_COMMAND_MIN + 10)  // 109
 
 // Maximum, minimum and range values of throttle input to motors_command().
 // A shift factor of 2 (multiply by 4) is used to reduce rounding errors,
 // since actual motor command is calculated by adding 4 variable.
 
 #define MOTOR_THROTTLE_FACTOR 2
-#define MOTOR_THROTTLE_MAX    (MOTOR_COMMAND_MAX  << MOTOR_THROTTLE_FACTOR)
-#define MOTOR_THROTTLE_MIN    (MOTOR_COMMAND_MIN  << MOTOR_THROTTLE_FACTOR)
+#define MOTOR_THROTTLE_MAX    (MOTOR_COMMAND_MAX  << MOTOR_THROTTLE_FACTOR)  // 896
+#define MOTOR_THROTTLE_MIN    (MOTOR_COMMAND_MIN  << MOTOR_THROTTLE_FACTOR)  // 396
 
 // Top and idle value define a range with some guard bands allowing room for
 // varying the actual motor command to control rotation in 3 axis.  Throttle
 // input to motors_command() should be within this range
 
-#define MOTOR_THROTTLE_TOP    (MOTOR_COMMAND_TOP  << MOTOR_THROTTLE_FACTOR)
-#define MOTOR_THROTTLE_IDLE   (MOTOR_COMMAND_IDLE << MOTOR_THROTTLE_FACTOR)
-#define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_TOP - MOTOR_THROTTLE_IDLE + 1)
+#define MOTOR_THROTTLE_TOP    (MOTOR_COMMAND_TOP  << MOTOR_THROTTLE_FACTOR)  // 816
+#define MOTOR_THROTTLE_IDLE   (MOTOR_COMMAND_IDLE << MOTOR_THROTTLE_FACTOR)  // 436
+#define MOTOR_THROTTLE_RANGE  (MOTOR_THROTTLE_TOP - MOTOR_THROTTLE_IDLE + 1) // 381
 
 // Maximum, minimum and range values of rotation (pitch, roll, yaw) rate input
 
-#define MOTOR_ROTATION_RATE_MAX   (MOTOR_THROTTLE_RANGE / 2)
-#define MOTOR_ROTATION_RATE_MIN   (-MOTOR_THROTTLE_RANGE / 2)
-#define MOTOR_ROTATION_RATE_RANGE MOTOR_THROTTLE_RANGE
+#define MOTOR_ROTATION_RATE_MAX   (MOTOR_THROTTLE_RANGE / 2)                 // 190
+#define MOTOR_ROTATION_RATE_MIN   (-MOTOR_THROTTLE_RANGE / 2)                // -190
+#define MOTOR_ROTATION_RATE_RANGE MOTOR_THROTTLE_RANGE                       // 381
 
 
 //============================== motors_init() ================================

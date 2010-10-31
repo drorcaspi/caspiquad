@@ -85,10 +85,11 @@ boolean            is_acro_mode        = false;
                     // false: stable mode, stick controls rotation angle
                     // true:  acrobatic mode, no accelerometer usage, stick
                     //        controls rotation rate
+#if (! SUPPORT_ROT_RATE_ONLY)
 boolean            is_rot_rate_control = false;
                     // false: stick controls rotation angle
                     // true:  stick controls rotation rate
-                    
+#endif                    
 FlightState        flight_state   = FLIGHT_SETUP;
 static SetupState  setup_state    = SETUP_GYROS;
 static uint16_t    setup_cycles   = 0;
@@ -550,8 +551,10 @@ void loop()
           is_rot_rate_control = receiver_get_boolean(ENABLE_ROT_RATE_CH);
 #endif
 
+#if (! SUPPORT_ROT_RATE_ONLY)
           if (is_acro_mode)
             is_rot_rate_control = true;
+#endif
 
           // Note that all the find*() functions must be called every cycle.
           // Thus, we call them and put the result into temporary variables, then
@@ -562,7 +565,9 @@ void loop()
           yaw_at_zero = receiver_rot[YAW].find_zero();
           pitch_at_zero = true;
           roll_at_zero  = true;
+#if (! SUPPORT_ROT_RATE_ONLY)
           if (is_rot_rate_control)
+#endif
           {
 #if SUPPORT_ROT_ZEROING_SWITCH
             if (receiver_get_boolean(ENABLE_ROT_ZEROING_CH))
@@ -860,6 +865,7 @@ void loop()
       rot_error = -rot_estimate[rot];
       rot_rate_error = -gyro[rot].get_rad_per_sec();
       
+#if (! SUPPORT_ROT_RATE_ONLY)
       if ((rot != YAW) && (! is_rot_rate_control)
          )
       {
@@ -891,6 +897,7 @@ void loop()
       }
 
       else
+#endif   // #if (! SUPPORT_ROT_RATE_ONLY)
       {
         // Receiver input controls rotation rate
         
