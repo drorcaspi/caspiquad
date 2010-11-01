@@ -304,7 +304,7 @@ handle_serial_telemetry(void)
           
           alt_pid.set_p(params[0]);
           alt_pid.set_i(0.0);
-          alt_pid.set_d(0.0);
+          alt_pid.set_d(params[2]);
           alt_pid.reset();
           
           //TBD_pid[PITCH].set_p(params[3]);
@@ -418,7 +418,7 @@ handle_serial_telemetry(void)
           print_comma();
           Serial.print(0.0);
           print_comma();
-          Serial.print(0.0);
+          Serial.print(alt_pid.get_d());
           print_comma();
           Serial.print(0.99);
           print_comma();

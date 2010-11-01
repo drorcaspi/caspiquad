@@ -83,7 +83,7 @@
 // 0: stick controls rotation angle
 // 1: stick controls rotation rate
 
-#define SUPPORT_ROT_RATE_ONLY          1
+#define SUPPORT_ROT_RATE_ONLY          1   // Support only rate mode, no switch
 #define SUPPORT_ROT_RATE_SWITCH        0  
 #define ENABLE_ROT_RATE_CH             GEAR_CH
 
@@ -129,6 +129,7 @@
 #define PRINT_ROT_ERROR           0
 #define PRINT_ROT_ESTIMATE        0
 #define PRINT_ROT_CORRECTION      0
+#define PRINT_ALT_HOLD            0
 #define PRINT_MOTOR_ROT_COMMAND   0
 #define PRINT_PID                 0
 #define PRINT_MOTOR_COMMAND       0
