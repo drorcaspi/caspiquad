@@ -51,7 +51,7 @@ typedef enum
 // Threshold for yaw flutter filtering around 0.  Within this range,
 // yaw control is assumed 0
 
-#define RECEIVER_YAW_FLUTTER_MAX 16
+#define RECEIVER_YAW_FLUTTER_MAX 32
 
 // Threshold for assuming yaw at 0.  Within this range, yaw heading is assumed
 // correct (yaw is 0), resetting the yaw integrator

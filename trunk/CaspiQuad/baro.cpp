@@ -124,7 +124,7 @@ typedef enum
 // Averaging definitions
 
 #define BARO_PRESSURE_AVG_INIT   0x80000000
-#define BARO_PRESSURE_AVG_SHIFT  3   // LPF @ ~ 12Hz 
+#define BARO_PRESSURE_AVG_SHIFT  5   // LPF @ ~ 3Hz 
 
 #if (CONTROL_LOOP_CYCLE_MSEC != 10)
   #error The above definition of BARO_PRESSURE_AVG_SHIFT needs to be fixed

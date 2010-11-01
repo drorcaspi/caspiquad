@@ -127,6 +127,7 @@ float PID::get_windup_guard(void)
 };
  
 
+#if 0
 //============================== update_p() ===================================
 //
 // Perform the PID algorithm, calulate the correction value given measured
@@ -144,6 +145,7 @@ PID::update_p(int16_t p_error)   // In : Measured error
 
   return p * p_error;
 }
+#endif
 
 
 //============================== update_pd() ==================================

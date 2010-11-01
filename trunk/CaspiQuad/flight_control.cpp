@@ -121,8 +121,9 @@ flight_control_init(
 //   altitude up and down.  I.e., it is used as the desired vertical speed.
 // - Barometer input is used as the actual altitude.
 // - PID on the altitude error (as P)
-// - Do not take vertical speed (P) into account, as its measurement resolution
-//   is very rough (about 1m/sec)
+// - Vertical speed (D) has a very rough measurement resolution (about 1m/sec)
+//   thus usage of D factor is questinable.  For now it is left in as a configurable
+//   parameter
 
 int16_t                              // Ret: Updated throttle command
 flight_control_alt(
@@ -137,8 +138,8 @@ flight_control_alt(
                           // State of the altitude hold switch in the last cycle
   static int16_t     ref_motor_throttle_command      = 0;
                           // Throttle command value when altitude hold was initiated
-  static int32_t     target_alt_1_512cm;
-                          // Target altitude, in 1/512 cm units
+  static int32_t     target_alt_1_256cm;
+                          // Target altitude, in 1/256 cm units
 
   // Local Variables
                           
@@ -177,21 +178,27 @@ flight_control_alt(
       // from its reference point.  Unit is 1/5 cm/sec.
       // Update the target altitude.  Range is about +/- 1 M/sec.
 
-      target_alt_1_512cm += motor_throttle_command - ref_motor_throttle_command;
+      target_alt_1_256cm += motor_throttle_command - ref_motor_throttle_command;
 
       // Calculate the altitude error and constrain
       
-      alt_err_cm = (target_alt_1_512cm >> 9) - alt_cm;
+      alt_err_cm = alt_cm - (target_alt_1_256cm >> 8);
       alt_err_cm = constrain(alt_err_cm,
                              (int32_t)ALT_HOLD_ALT_DIFF_MIN_CM,
                              (int32_t)ALT_HOLD_ALT_DIFF_MAX_CM);
-      
+
+#if PRINT_ALT_HOLD
+      Serial.print(alt_err_cm, DEC);
+#endif
+
       // Calculate the altitude error and do the PID
-      // Note that we do not take the vertical speed error into account.  This is
-      // because the granularity of the barometer measurement would be very rough
-      // (about 1m / sec).
+      // Note 1: We do not take the vertical speed command into account.  This is
+      //         because it is very small compared to the granularity of the measured
+      //         vertical speed, which is about 1m/sec.
+      // Note 2: We negate the PID result for convenience (positive error means negative
+      //         correction)
     
-      motor_alt_command = alt_pid.update_p((int16_t)alt_err_cm);
+      motor_alt_command = -alt_pid.update_pd(alt_err_cm);
       
       // Constrain the altitude command to the minimum and maximum legal
       // values and add to the stored initial throttle command
@@ -225,7 +232,7 @@ flight_control_alt(
       // Set the starting point and zero the barometer
     
       ref_motor_throttle_command = motor_throttle_command;
-      target_alt_1_512cm = alt_cm << 9;
+      target_alt_1_256cm = alt_cm << 8;
       is_alt_hold = true;
       indicators_set(IND_FLIGHT_ALT_HOLD);
     }
@@ -234,6 +241,11 @@ flight_control_alt(
   // Save the state of the altitude hold switch for the next cycle
   
   was_alt_hold_sw = is_alt_hold_sw;
+
+#if PRINT_ALT_HOLD
+  Serial.print('\t');
+  Serial.println(motor_throttle_command, DEC);
+#endif
 
   // Return the updated throttle command
   
