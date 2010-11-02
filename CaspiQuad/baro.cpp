@@ -48,7 +48,11 @@
 // Test flag.  If != 0, use example data from the BMP085 data sheet instead of
 // real data.
 
-#define BARO_EXAMPLE    0   
+#define BARO_EXAMPLE        0   
+
+// Read temperature once (if != 0) or ongoing (if == 0)
+
+#define BARO_READ_TEMP_ONCE 1
 
 //-----------------------------------------------------------------------------
 //
@@ -113,6 +117,8 @@ typedef enum
 typedef enum
 {
   BARO_CYCLE_READ_TEMP      = 0,  // At least 4.5msec to sample
+  BARO_CYCLE_WAIT_RESSURE_1 = 1,
+  BARO_CYCLE_WAIT_RESSURE_2 = 2,
   BARO_CYCLE_READ_PRESSURE  = 3,  // At least 22.5msec to sample
   BARO_CYCLE_NUM            = 4
 } BaroCycle;
@@ -299,9 +305,13 @@ baro_update(void)
       //Serial.print('\t');
 
       // Initiate next temperature reading
-      
+
+#if BARO_READ_TEMP_ONCE      
+      i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_PRESSURE_3);
+#else
       i2c_write_8(BMP085_ADDRESS, BMP085_CONTROL_REG, BMP085_TEMPERATURE);
 #endif
+#endif  // ! BARO_EXAMPLE
 
       // Calculate true pressure
 
@@ -357,7 +367,13 @@ baro_update(void)
   };
 
   if (++baro_cycle >= BARO_CYCLE_NUM)
+  {
+#if BARO_READ_TEMP_ONCE      
+    baro_cycle = BARO_CYCLE_WAIT_RESSURE_1;
+#else
     baro_cycle = BARO_CYCLE_READ_TEMP;
+#endif
+  }
 
   return true;
 }
